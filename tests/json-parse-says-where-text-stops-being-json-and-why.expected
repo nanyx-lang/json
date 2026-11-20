@@ -1,0 +1,22 @@
+0 1:1 Expected a value, found the end of the text
+5 1:6 Expected ',' or ']' after an element of an array, found the end of the text
+3 1:4 Expected a value, found ']'
+3 1:4 Expected ',' or ']' after an element of an array, found '2'
+5 1:6 Expected ':' after the name of a member, found '1'
+8 1:9 Expected a string to name a member of an object, found '}'
+1 1:2 Expected a string to name a member of an object, found '1'
+8 1:9 Expected ',' or '}' after a member of an object, found '"'
+0 1:1 Expected a value, found 't'
+5 1:6 Expected the end of the text after the value, found 'f'
+0 1:1 A number can't start with a 0 followed by more digits
+1 1:2 Expected a digit, found the end of the text
+2 1:3 Expected a digit after '.', found the end of the text
+2 1:3 Expected a digit in the exponent, found the end of the text
+4 1:5 Expected a '"' to end the string, found the end of the text
+2 1:3 Expected an escape after '\', found 'q': a string's escapes are \", \\, \/, \b, \f, \n, \r, \t and \uXXXX
+1 1:2 Expected four hexadecimal digits after '\u'
+1 1:2 A '\u' escape of a surrogate needs the other half of its pair: a character past U+FFFF is written as a high surrogate then a low one, such as '\uD83D\uDE00'
+1 1:2 A '\u' escape of a surrogate needs the other half of its pair: a character past U+FFFF is written as a high surrogate then a low one, such as '\uD83D\uDE00'
+4 1:5 A string can't hold a control character: write it as an escape, such as '\n'
+9 3:3 Expected a value, found 'x'
+7 1:7 Expected a value, found 'ü'

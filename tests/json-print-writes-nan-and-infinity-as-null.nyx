@@ -1,0 +1,12 @@
+-- json.print writes NaN and infinity as null
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+println(json.print(#array([#number(0.0 / 0.0), #number(1.0 / 0.0), #number(-1.0 / 0.0)])))

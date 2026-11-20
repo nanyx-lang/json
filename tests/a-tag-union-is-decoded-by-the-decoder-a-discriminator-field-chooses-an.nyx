@@ -1,0 +1,77 @@
+-- a tag union is decoded by the decoder a discriminator field chooses, and encoded back
+::dependency nanyx.json ./nanyx.json
+
+import (
+  nanyx.json/encode as encode
+  nanyx.json/json as json
+)
+
+type User = (name: string, age: int, nickname: #some(string) | #none)
+
+def user: json.Decoder(User) = json.record {
+  def name = try json.field("name", json.string)
+  def age = try json.field("age", json.int)
+  def nickname = try json.field("nickname", json.optional(json.string))
+  return User(name = name, age = age, nickname = nickname)
+}
+
+def userEncoder: json.Encoder(User) = encode.object(
+  [
+    encode.field("name", { u -> u.name }, encode.string)
+    encode.field("age", { u -> u.age }, encode.int)
+    encode.optionalField("nickname", { u -> u.nickname }, encode.string)
+  ]
+)
+
+def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encode(x, encoder))
+  | #error(e), _ -> println(json.describe(e))
+}
+
+type Shape = #circle(float) | #rect(float, float)
+
+def circle: json.Decoder(Shape) = json.convert(
+  json.field("radius", json.float)
+  { r -> #circle(r) }
+)
+
+def rect: json.Decoder(Shape) = json.record {
+  def width = try json.field("width", json.float)
+  def height = try json.field("height", json.float)
+  return #rect(width, height)
+}
+
+def shape: json.Decoder(Shape) = json.record {
+  def kind = try json.field("kind", json.string)
+
+  def decoder =
+    match kind
+      | "circle" -> circle
+      | "rect" -> rect
+      | other -> json.fail("Expected the kind 'circle' or 'rect', found '{other}'")
+
+  def s = try decoder
+  return s
+}
+
+def shapeEncoder: json.Encoder(Shape) = {
+  | #circle(r) -> #object(["kind" => #string("circle"), "radius" => #number(r)])
+  | #rect(w, h) -> #object(
+    ["kind" => #string("rect"), "width" => #number(w), "height" => #number(h)]
+  )
+}
+
+show(
+  json.decode(
+    '[{"kind": "circle", "radius": 1.5}, {"kind": "rect", "width": 2, "height": 3}]'
+    json.list(shape)
+  )
+  encode.list(shapeEncoder)
+)
+
+show(
+  json.decode('[{"kind": "circle", "radius": 1}, {"kind": "hexagon"}]', json.list(shape))
+  encode.list(shapeEncoder)
+)
+
+show(json.decode('[{"kind": "rect", "width": 2}]', json.list(shape)), encode.list(shapeEncoder))

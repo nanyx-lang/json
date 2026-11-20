@@ -1,0 +1,40 @@
+-- a list of 100,000 records is decoded and encoded in constant stack
+::dependency nanyx.json ./nanyx.json
+
+import (
+  nanyx.json/encode as encode
+  nanyx.json/json as json
+)
+
+type User = (name: string, age: int, nickname: #some(string) | #none)
+
+def user: json.Decoder(User) = json.record {
+  def name = try json.field("name", json.string)
+  def age = try json.field("age", json.int)
+  def nickname = try json.field("nickname", json.optional(json.string))
+  return User(name = name, age = age, nickname = nickname)
+}
+
+def userEncoder: json.Encoder(User) = encode.object(
+  [
+    encode.field("name", { u -> u.name }, encode.string)
+    encode.field("age", { u -> u.age }, encode.int)
+    encode.optionalField("nickname", { u -> u.nickname }, encode.string)
+  ]
+)
+
+def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encode(x, encoder))
+  | #error(e), _ -> println(json.describe(e))
+}
+
+def items = list.init(
+  100000
+  { i -> '{"name": "u' ++ int.toString(i) ++ '", "age": ' ++ int.toString(i % 90) ++ '}' }
+)
+
+match json.decode("[" ++ string.join(items, ",") ++ "]", json.list(user))
+  | #some(users) ->
+    println(list.length(users))
+    println(string.length(json.encode(users, encode.list(userEncoder))))
+  | #error(e) -> println(json.describe(e))

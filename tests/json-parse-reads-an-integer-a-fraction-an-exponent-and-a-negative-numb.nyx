@@ -1,0 +1,28 @@
+-- json.parse reads an integer, a fraction, an exponent and a negative number
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+def number = { text ->
+  match json.parse(text)
+    | #some(#number(x)) -> println(x)
+    | _ -> println("not a number")
+}
+
+number("0")
+number("1815")
+number("2.5")
+number("0.125")
+number("1e3")
+number("2.5E-2")
+number("6e+2")
+number("-7")
+number("-0.5")
+number("-1.5e2")
+show("[1, 2.5, -3, 1e2, 1.5e-7, 12345678901234567890]")

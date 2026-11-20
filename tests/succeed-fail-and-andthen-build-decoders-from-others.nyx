@@ -1,0 +1,43 @@
+-- succeed, fail and andThen build decoders from others
+::dependency nanyx.json ./nanyx.json
+
+import (
+  nanyx.json/encode as encode
+  nanyx.json/json as json
+)
+
+type User = (name: string, age: int, nickname: #some(string) | #none)
+
+def user: json.Decoder(User) = json.record {
+  def name = try json.field("name", json.string)
+  def age = try json.field("age", json.int)
+  def nickname = try json.field("nickname", json.optional(json.string))
+  return User(name = name, age = age, nickname = nickname)
+}
+
+def userEncoder: json.Encoder(User) = encode.object(
+  [
+    encode.field("name", { u -> u.name }, encode.string)
+    encode.field("age", { u -> u.age }, encode.int)
+    encode.optionalField("nickname", { u -> u.nickname }, encode.string)
+  ]
+)
+
+def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encode(x, encoder))
+  | #error(e), _ -> println(json.describe(e))
+}
+
+def versioned: json.Decoder(string) = json.andThen(
+  json.field("version", json.int)
+  {
+    | 1 -> json.field("name", json.string)
+    | 2 -> json.field("fullName", json.string)
+    | _ -> json.fail("Expected version 1 or 2")
+  }
+)
+
+show(json.decode('{"version": 1, "name": "Ada"}', versioned), encode.string)
+show(json.decode('{"version": 2, "fullName": "Ada Lovelace"}', versioned), encode.string)
+show(json.decode('{"version": 3}', versioned), encode.string)
+show(json.decode("null", json.succeed("default")), encode.string)

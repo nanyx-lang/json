@@ -1,0 +1,72 @@
+-- lists and nested records are decoded, and an error names the path to the value that didn't fit
+::dependency nanyx.json ./nanyx.json
+
+import (
+  nanyx.json/encode as encode
+  nanyx.json/json as json
+)
+
+type User = (name: string, age: int, nickname: #some(string) | #none)
+
+def user: json.Decoder(User) = json.record {
+  def name = try json.field("name", json.string)
+  def age = try json.field("age", json.int)
+  def nickname = try json.field("nickname", json.optional(json.string))
+  return User(name = name, age = age, nickname = nickname)
+}
+
+def userEncoder: json.Encoder(User) = encode.object(
+  [
+    encode.field("name", { u -> u.name }, encode.string)
+    encode.field("age", { u -> u.age }, encode.int)
+    encode.optionalField("nickname", { u -> u.nickname }, encode.string)
+  ]
+)
+
+def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encode(x, encoder))
+  | #error(e), _ -> println(json.describe(e))
+}
+
+type Team = (name: string, users: list(User))
+
+def team: json.Decoder(Team) = json.record {
+  def name = try json.field("name", json.string)
+  def users = try json.field("users", json.list(user))
+  return Team(name = name, users = users)
+}
+
+def teamEncoder: json.Encoder(Team) = encode.object(
+  [
+    encode.field("name", { t -> t.name }, encode.string)
+    encode.field("users", { t -> t.users }, encode.list(userEncoder))
+  ]
+)
+
+show(
+  json.decode(
+    '{"name": "core", "users": [{"name": "Ada", "age": 36}, {"name": "Bob", "age": 25}]}'
+    team
+  )
+  teamEncoder
+)
+
+show(
+  json.decode(
+    '{"name": "core", "users": [{"name": "Ada", "age": 36}, {"name": "Bob", "age": 2}, {"name": "Cy", "age": 2.5}]}'
+    team
+  )
+  teamEncoder
+)
+
+show(
+  json.decode('{"name": "core", "users": [{"name": "Ada", "age": 36}, {"age": 2}]}', team)
+  teamEncoder
+)
+
+show(json.decode('{"name": "core", "users": {}}', team), teamEncoder)
+
+show(
+  json.decode('[[1, 2], [3, "4"]]', json.list(json.list(json.int)))
+  encode.list(encode.list(encode.int))
+)

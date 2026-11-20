@@ -1,0 +1,48 @@
+-- oneOf reads by the first decoder that fits, and otherwise says what the one that got furthest found
+::dependency nanyx.json ./nanyx.json
+
+import (
+  nanyx.json/encode as encode
+  nanyx.json/json as json
+)
+
+type User = (name: string, age: int, nickname: #some(string) | #none)
+
+def user: json.Decoder(User) = json.record {
+  def name = try json.field("name", json.string)
+  def age = try json.field("age", json.int)
+  def nickname = try json.field("nickname", json.optional(json.string))
+  return User(name = name, age = age, nickname = nickname)
+}
+
+def userEncoder: json.Encoder(User) = encode.object(
+  [
+    encode.field("name", { u -> u.name }, encode.string)
+    encode.field("age", { u -> u.age }, encode.int)
+    encode.optionalField("nickname", { u -> u.nickname }, encode.string)
+  ]
+)
+
+def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encode(x, encoder))
+  | #error(e), _ -> println(json.describe(e))
+}
+
+type Id = #number(int) | #name(string)
+
+def id: json.Decoder(Id) = json.oneOf(
+  [
+    json.convert(json.int, { n -> #number(n) })
+    json.convert(json.string, { s -> #name(s) })
+    json.convert(json.field("name", json.string), { s -> #name(s) })
+  ]
+)
+
+def idEncoder: json.Encoder(Id) = {
+  | #number(n) -> encode.int(n)
+  | #name(s) -> encode.string(s)
+}
+
+show(json.decode('[1, "two", {"name": "three"}]', json.list(id)), encode.list(idEncoder))
+show(json.decode('[1, {"name": 3}]', json.list(id)), encode.list(idEncoder))
+show(json.decode("true", json.oneOf([])), encode.bool)

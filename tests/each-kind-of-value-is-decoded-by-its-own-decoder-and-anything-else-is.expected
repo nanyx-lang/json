@@ -1,0 +1,11 @@
+2.5
+-7
+true
+"hi"
+[1,{"a":null}]
+{"en":"Hello","fr":"Bonjour"}
+Expected a string, found null
+Expected a whole number, found 1.0e30
+Expected a boolean, found an array
+Expected a number, found an object
+Expected ',' or ']' after an element of an array, found the end of the text, at line 1, column 6

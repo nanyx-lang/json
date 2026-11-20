@@ -1,0 +1,5 @@
+{"name":"core","users":[{"name":"Ada","age":36},{"name":"Bob","age":25}]}
+users[2].age: Expected a whole number, found 2.5
+users[1].name: Expected a member 'name', found none
+users: Expected an array, found an object
+[1][1]: Expected a whole number, found a string

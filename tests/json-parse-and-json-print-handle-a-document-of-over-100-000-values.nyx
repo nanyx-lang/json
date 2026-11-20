@@ -1,0 +1,24 @@
+-- json.parse and json.print handle a document of over 100,000 values
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+def item = { i -> '{"id": ' ++ int.toString(i) ++ ', "name": "item \u00e9", "tags": [true, null]}' }
+def text = "[" ++ string.join(list.init(20000, item), ",\n") ++ "]"
+
+match json.parse(text)
+  | #some(#array(items)) ->
+    println(list.length(items))
+    println(string.length(json.print(#array(items))))
+
+    println(
+      json.print(#array(items)) ==
+        json.print(orCrash(json.parse(json.print(#array(items))), "JSON"))
+    )
+  | _ -> println("not an array")

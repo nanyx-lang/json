@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and test with the latest compiler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The compiler's releases are tagged compiler/<version> in nanyx-lang/nanyx, beside the VS Code extension's.
+      - name: Download the latest released compiler
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release list --repo nanyx-lang/nanyx --limit 50 --json tagName \
+            --jq '[.[] | select(.tagName | startswith("compiler/"))][0].tagName')
+          echo "Using $tag"
+          mkdir -p "$RUNNER_TEMP/nanyx"
+          gh release download "$tag" --repo nanyx-lang/nanyx --pattern 'nanyx-*-linux-x64.tar.gz' --output "$RUNNER_TEMP/nanyx.tar.gz"
+          tar -xzf "$RUNNER_TEMP/nanyx.tar.gz" -C "$RUNNER_TEMP/nanyx"
+          echo "$RUNNER_TEMP/nanyx" >> "$GITHUB_PATH"
+
+      - name: Check the package
+        run: |
+          nanyx --version
+          nanyx check .
+
+      - name: Check the formatting
+        run: nanyx format --check src tests
+
+      - name: Run the tests
+        run: tests/run.sh
+
+      - name: Pack the package
+        run: nanyx pack .

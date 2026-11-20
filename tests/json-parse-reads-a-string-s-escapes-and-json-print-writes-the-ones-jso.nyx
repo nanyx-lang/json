@@ -1,0 +1,18 @@
+-- json.parse reads a string's escapes, and json.print writes the ones JSON needs
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+match json.parse('"q\" b\\ s\/ \b\f\n\r\t e\u00e9 E\u00C9 euro\u20ac smile\ud83d\ude00 nul\u0000"')
+  | #some(#string(s)) ->
+    println(s \codePoints)
+    println(json.print(#string(s)))
+  | _ -> println("not a string")
+
+show('"héllo, wörld"')

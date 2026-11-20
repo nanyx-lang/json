@@ -1,0 +1,33 @@
+-- json.parse says where text stops being JSON, and why
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+show("")
+show("[1, 2")
+show("[1,]")
+show("[1 2]")
+show('{"a" 1}')
+show('{"a": 1,}')
+show("\{1: 2\}")
+show('{"a": 1 "b": 2}')
+show("tru")
+show("true false")
+show("01")
+show("-")
+show("1.")
+show("1e")
+show('"abc')
+show('"a\qb"')
+show('"\u12"')
+show('"\ud800"')
+show('"\ude00 x"')
+show('"tab	inside"')
+show("[\n  1,\n  x\n]")
+show('["é", ü]')

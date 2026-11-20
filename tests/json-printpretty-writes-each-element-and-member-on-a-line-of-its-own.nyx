@@ -1,0 +1,18 @@
+-- json.printPretty writes each element and member on a line of its own
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+match json.parse('{"name": "Ada", "tags": ["a", [], {}], "nested": {"x": [1, {"y": null}]}}')
+  | #some(value) ->
+    println(json.printPretty(value, indent = 2))
+    println(json.printPretty(value, indent = 4))
+    println(json.printPretty(#number(1.0), indent = 2))
+    println(json.printPretty(#array([]), indent = 2))
+  | #error(e) -> println(e.message)

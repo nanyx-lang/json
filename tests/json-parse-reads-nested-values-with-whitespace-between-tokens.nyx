@@ -1,0 +1,14 @@
+-- json.parse reads nested values, with whitespace between tokens
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+show(
+  " \{ \"users\" : [ \{ \"name\": \"Ada\", \"tags\": [ ] \}, \{ \"name\": \"Grace\", \"tags\": [\"navy\", [1, [2]]] \} ],\n\t\"count\": 2 \} \r\n"
+)

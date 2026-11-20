@@ -1,0 +1,27 @@
+-- json.parse reads the value of each kind out of the text
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+def show = { text ->
+  match json.parse(text)
+    | #some(value) -> println(json.print(value))
+    | #error(e) -> println("{e.position} {e.line}:{e.column} {e.message}")
+}
+
+match json.parse(
+  '{"name": "Ada", "born": 1815, "languages": ["English", "French"], "alive": false}'
+)
+  | #some(#object(person)) ->
+    match person("name")
+      | #some(#string(name)) -> println(name)
+      | _ -> println("no name")
+
+    match person("born")
+      | #some(#number(born)) -> println(born + 1.0)
+      | _ -> println("no year")
+
+    match person("languages")
+      | #some(#array(languages)) -> println(list.length(languages))
+      | _ -> println("no languages")
+  | _ -> println("not an object")

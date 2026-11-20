@@ -1,0 +1,4 @@
+[field a, index 0, field b, index 1]
+a[0].b[1]
+Expected a whole number, found a string
+true
