@@ -33,9 +33,9 @@ def main = {
 Import `nanyx.json/json` under a name, `as json`: its `print` would otherwise clash with the console's. The encoders
 are in `nanyx.json/encode`, since their names are the decoders'.
 
-The reference, with more examples, is on the docs site: [json](https://nanyx.dev/docs/stdlib/json),
-[decoders](https://nanyx.dev/docs/stdlib/json-typed) and
-[encoders](https://nanyx.dev/docs/stdlib/encode).
+The reference is the doc comments in `src/`, which an editor shows when you hover over a name. Guides with more
+examples are on the docs site: [json](https://nanyx.dev/docs/stdlib/json),
+[decoders](https://nanyx.dev/docs/stdlib/json-typed) and [encoders](https://nanyx.dev/docs/stdlib/encode).
 
 ## Develop
 
