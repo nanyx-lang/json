@@ -112,10 +112,7 @@ export def list: Decoder(a) -> Decoder(list(a)) = { decoder ->
 
 --| `members` read by `decoder`, in front of `acc`, last first.
 def decodeMembers
-  : Decoder(a),
-    list((string, Json)),
-    list((string, a))
-    -> #some(map(string, a)) | #failed(list(PathStep), string)
+  : Decoder(a), list((string, Json)), list((string, a)) -> #some(map(string, a)) | #failed(list(PathStep), string)
   = { decoder, members, acc ->
     match members
       | [] -> #some(map.fromList(list.reverse(acc)))
@@ -211,9 +208,7 @@ export def andThen: Decoder(a), (a -> Decoder(b)) -> Decoder(b) = { decoder, nex
 --| The failure of `failures` with the longest path, the one that got furthest into the value, or
   the first of those that tie: what a decoder of [`oneOf`] that nearly fitted says was wrong.
 def furthest
-  : list((list(PathStep), string)),
-    (list(PathStep), string)
-    -> #some(a) | #failed(list(PathStep), string)
+  : list((list(PathStep), string)), (list(PathStep), string) -> #some(a) | #failed(list(PathStep), string)
   = { failures, best ->
     match failures
       | [] -> #failed(best.0, best.1)
@@ -226,10 +221,7 @@ def furthest
 --| `value` read by the first of `decoders` that reads it, with `failures` those before that didn't,
   last first.
 def firstOf
-  : list(Decoder(a)),
-    Json,
-    list((list(PathStep), string))
-    -> #some(a) | #failed(list(PathStep), string)
+  : list(Decoder(a)), Json, list((list(PathStep), string)) -> #some(a) | #failed(list(PathStep), string)
   = { decoders, v, failures ->
     match decoders
       | [] -> (match list.reverse(failures)

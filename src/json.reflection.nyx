@@ -65,9 +65,7 @@ def isNone: a, type a -> bool = { value, t ->
 --| Each of `results` that has a value, in order, in front of `acc`, last first, or the first
   failure: what writing the parts of a value gives.
 def allOf
-  : list(#some(b) | #skip | #failed(list(PathStep), string)),
-    list(b)
-    -> #some(list(b)) | #failed(list(PathStep), string)
+  : list(#some(b) | #skip | #failed(list(PathStep), string)), list(b) -> #some(list(b)) | #failed(list(PathStep), string)
   = { results, acc ->
     match results
       | [] -> #some(list.reverse(acc))
@@ -78,10 +76,7 @@ def allOf
 
 --| `written`, with `step` in front of its path when it failed, or the value made of it by `f`.
 def stepped
-  : PathStep,
-    (#some(Json) | #failed(list(PathStep), string)),
-    (Json -> b)
-    -> #some(b) | #failed(list(PathStep), string)
+  : PathStep, (#some(Json) | #failed(list(PathStep), string)), (Json -> b) -> #some(b) | #failed(list(PathStep), string)
   = { step, written, f ->
     match written
       | #some(j) -> #some(f(j))
@@ -234,8 +229,7 @@ def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value
 -- The result is `#some(string) | EncodeError` written out: the compiler gives no `Typed` to a call
 -- from another package of a function whose result names a type alias of this one.
 export def encode
-  : [Typed(a)]
-    a -> #some(string) | #cannotEncode(path: list(#field(string) | #index(int)), message: string)
+  : [Typed(a)] a -> #some(string) | #cannotEncode(path: list(#field(string) | #index(int)), message: string)
   = { x ->
     match toJson(x, typeOf)
       | #some(j) -> #some(print(j))
@@ -258,9 +252,7 @@ export def encoderFor: type a -> Encoder(a) = { t ->
 
 --| `read`, with `step` in front of its path when it failed.
 def within
-  : PathStep,
-    (#some(a) | #failed(list(PathStep), string))
-    -> #some(a) | #failed(list(PathStep), string)
+  : PathStep, (#some(a) | #failed(list(PathStep), string)) -> #some(a) | #failed(list(PathStep), string)
   = { step, read ->
     match read
       | #some(x) -> #some(x)
@@ -298,10 +290,7 @@ def arrayOf: Json, type a -> #some(list(a)) | #failed(list(PathStep), string) = 
 
 --| `members` read as values of the type `t`, in front of `acc`, last first.
 def membersOf
-  : list((string, Json)),
-    type a,
-    list((string, a))
-    -> #some(map(string, a)) | #failed(list(PathStep), string)
+  : list((string, Json)), type a, list((string, a)) -> #some(map(string, a)) | #failed(list(PathStep), string)
   = { members, t, acc ->
     match members
       | [] -> #some(map.fromList(list.reverse(acc)))
@@ -441,12 +430,7 @@ def isOptionType: type a -> bool = { t ->
   of an object, under which `payload` is; or `#inline`, by the value itself, as [`Json`]'s tags and
   an option's are.
 def caseOf
-  : list(Case(a)),
-    string,
-    list(string),
-    Json,
-    (#bare | #member | #inline)
-    -> #some(a) | #failed(list(PathStep), string)
+  : list(Case(a)), string, list(string), Json, (#bare | #member | #inline) -> #some(a) | #failed(list(PathStep), string)
   = { cases, name, names, payload, written ->
     match list.find(cases, { c -> c.name == name })
       | #some(c) -> (match fromJson(payload, c.type)
