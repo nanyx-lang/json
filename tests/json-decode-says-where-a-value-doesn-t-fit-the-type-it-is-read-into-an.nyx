@@ -40,3 +40,17 @@ show(json.decode("[1, 300]", into = type list(U8)))
 show(json.decode("[1, 2", into = type list(int)))
 show(json.decode('{"a": 1}', into = type map(string, string)))
 show(json.decode("1", into = type (int -> int)))
+
+-- a nominal type of another module, or one Typed shows, and a function can't be written or read
+type Money = protected (cents: int)
+
+def wallet = (owner = "Ada", cash = [Money(cents = 5)])
+
+def written: [Console] (#some(string) | json.EncodeError) -> () = {
+  | #some(text) -> println(text)
+  | failure -> println(json.describe(failure))
+}
+
+written(json.encode(wallet))
+written(json.encode(name = "f", run = { n -> n + 1 }))
+println(json.encodeWith(Money(cents = 5), json.encoderFor(type Money)))

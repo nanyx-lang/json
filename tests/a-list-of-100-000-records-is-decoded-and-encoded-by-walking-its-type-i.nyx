@@ -13,5 +13,5 @@ def items = list.init(
 match json.decode("[" ++ string.join(items, ",") ++ "]", into = type list(User))
   | #some(users) ->
     println(list.length(users))
-    println(string.length(json.encode(users)))
+    println(string.length(json.encode(users) \orCrash("written")))
   | failure -> println(json.describe(failure))

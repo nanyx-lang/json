@@ -10,3 +10,6 @@ Expected an array of 2 elements, found 3
 Expected ',' or ']' after an element of an array, found the end of the text, at line 1, column 6
 a: Expected a string, found a number
 A function can't be read from JSON
+cash[0]: Money of json-decode-says-where-a-value-doesn-t-fit-the-type-it-is-read-into-an can't be written as JSON: a nominal type shows its structure only to its own module
+run: A function can't be written as JSON
+{"cents":5}

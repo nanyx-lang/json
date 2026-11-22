@@ -62,53 +62,126 @@ def isNone: a, type a -> bool = { value, t ->
     | else -> false
 }
 
---| `m`, whose keys are of the type `key` and values of the type `item`, as a `Json` value: an
-  object for string keys, and otherwise an array of `[key, value]` pairs.
-def mapToJson: map(k, v), type k, type v -> Json = { m, key, item ->
-  match key
-    | #string -> #object(
-      map.fromList(list.map(map.toList(m), { pair -> (pair.0, toJson(pair.1, item)) }))
-    )
-    | else -> #array(
-      list.map(map.toList(m), { pair -> #array([toJson(pair.0, key), toJson(pair.1, item)]) })
-    )
+--| Each of `results` that has a value, in order, in front of `acc`, last first, or the first
+  failure: what writing the parts of a value gives.
+def allOf
+  : list(#some(b) | #skip | #failed(list(PathStep), string)),
+    list(b)
+    -> #some(list(b)) | #failed(list(PathStep), string)
+  = { results, acc ->
+    match results
+      | [] -> #some(list.reverse(acc))
+      | [#some(x), ...rest] -> allOf(rest, [x, ...acc])
+      | [#skip, ...rest] -> allOf(rest, acc)
+      | [#failed(path, message), ..._] -> #failed(path, message)
+  }
+
+--| `written`, with `step` in front of its path when it failed, or the value made of it by `f`.
+def stepped
+  : PathStep,
+    (#some(Json) | #failed(list(PathStep), string)),
+    (Json -> b)
+    -> #some(b) | #failed(list(PathStep), string)
+  = { step, written, f ->
+    match written
+      | #some(j) -> #some(f(j))
+      | #failed(path, message) -> #failed([step, ...path], message)
+  }
+
+--| `items`, of the type `t`, each written as JSON, as an array.
+def arrayToJson: list(a), type a -> #some(Json) | #failed(list(PathStep), string) = { items, t ->
+  match allOf(list.mapIndexed(items, { i, x -> stepped(#index(i), toJson(x, t), { j -> j }) }), [])
+    | #some(js) -> #some(#array(js))
+    | #failed(path, message) -> #failed(path, message)
 }
 
---| `value`, of the type `t`, as a `Json` value: what [`encode`] writes.
-def toJson: a, type a -> Json = { value, t ->
+--| `m`, whose keys are of the type `key` and values of the type `item`, as a `Json` value: an
+  object for string keys, and otherwise an array of `[key, value]` pairs.
+def mapToJson
+  : map(k, v), type k, type v -> #some(Json) | #failed(list(PathStep), string)
+  = { m, key, item ->
+    match key
+      | #string -> (match allOf(
+        list.map(
+          map.toList(m)
+          { pair -> stepped(#field(pair.0), toJson(pair.1, item), { j -> (pair.0, j) }) }
+        )
+        []
+      )
+        | #some(members) -> #some(#object(map.fromList(members)))
+        | #failed(path, message) -> #failed(path, message))
+      | else -> match allOf(
+        list.mapIndexed(
+          map.toList(m)
+          { i, pair ->
+            match toJson(pair.0, key)
+              | #some(k) -> stepped(#index(i), toJson(pair.1, item), { j -> #array([k, j]) })
+              | #failed(path, message) -> #failed([#index(i), ...path], message)
+          }
+        )
+        []
+      )
+        | #some(pairs) -> #some(#array(pairs))
+        | #failed(path, message) -> #failed(path, message)
+  }
+
+--| The tag `name` with no payload, as JSON writes it: its name.
+def tagJson: string -> Json = { name ->
+  #string(name)
+}
+
+--| The tag `name` with the payload written `payload`, as JSON writes it: an object with one member.
+def payloadJson: string, Json -> Json = { name, payload ->
+  #object([name => payload])
+}
+
+--| `value`, of the type `t`, as a `Json` value, or the path to a part that can't be written, and
+  why: what [`encode`] writes.
+def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value, t ->
   match t
-    | #int -> #number(int.toFloat(value))
-    | #float -> #number(value)
-    | #bool -> #bool(value)
-    | #string -> #string(value)
-    | #unit -> #null
-    | #i8 -> #number(I8.toFloat(value))
-    | #i16 -> #number(I16.toFloat(value))
-    | #i32 -> #number(I32.toFloat(value))
-    | #u8 -> #number(U8.toFloat(value))
-    | #u16 -> #number(U16.toFloat(value))
-    | #u32 -> #number(U32.toFloat(value))
-    | #u64 -> #number(U64.toFloat(value))
-    | #f32 -> #number(F32.toFloat(value))
-    | #list(elem) -> #array(list.map(value, { x -> toJson(x, elem) }))
-    | #array(elem) -> #array(list.map(array.toList(value), { x -> toJson(x, elem) }))
-    | #set(elem) -> #array(list.map(set.toList(value), { x -> toJson(x, elem) }))
+    | #int -> #some(#number(int.toFloat(value)))
+    | #float -> #some(#number(value))
+    | #bool -> #some(#bool(value))
+    | #string -> #some(#string(value))
+    | #unit -> #some(#null)
+    | #i8 -> #some(#number(I8.toFloat(value)))
+    | #i16 -> #some(#number(I16.toFloat(value)))
+    | #i32 -> #some(#number(I32.toFloat(value)))
+    | #u8 -> #some(#number(U8.toFloat(value)))
+    | #u16 -> #some(#number(U16.toFloat(value)))
+    | #u32 -> #some(#number(U32.toFloat(value)))
+    | #u64 -> #some(#number(U64.toFloat(value)))
+    | #f32 -> #some(#number(F32.toFloat(value)))
+    | #list(elem) -> arrayToJson(value, elem)
+    | #array(elem) -> arrayToJson(array.toList(value), elem)
+    | #set(elem) -> arrayToJson(set.toList(value), elem)
     | #map(key, item) -> mapToJson(value, key, item)
     | #record(r) ->
       if isTuple(list.map(r.fields, { f -> f.name }))
-        then #array(list.map(r.fields, { f -> toJson(f.get(value), f.type) }))
-        else #object(
-          map.fromList(
-            list.filterMap(
-              r.fields
-              { f ->
-                if isNone(f.get(value), f.type)
-                  then #skip
-                  else #some(keyOf(f.name, f.attributes), toJson(f.get(value), f.type))
-              }
-            )
+        then (match allOf(
+          list.mapIndexed(
+            r.fields
+            { i, f -> stepped(#index(i), toJson(f.get(value), f.type), { j -> j }) }
           )
+          []
         )
+          | #some(js) -> #some(#array(js))
+          | #failed(path, message) -> #failed(path, message))
+        else match allOf(
+          list.map(
+            r.fields
+            { f ->
+              def key = keyOf(f.name, f.attributes)
+
+              if isNone(f.get(value), f.type)
+                then #skip
+                else stepped(#field(key), toJson(f.get(value), f.type), { j -> (key, j) })
+            }
+          )
+          []
+        )
+          | #some(members) -> #some(#object(map.fromList(members)))
+          | #failed(path, message) -> #failed(path, message)
     | #union(u) ->
       def names = list.map(u.cases, { c -> c.name })
 
@@ -119,11 +192,15 @@ def toJson: a, type a -> Json = { value, t ->
             | #some(payload) -> #some(
               if isJson(u.name, u.module) or isOption(names)
                 then (if c.name == "null" or c.name == "none"
-                  then #null
+                  then #some(#null)
                   else toJson(payload, c.type))
                 else match c.type
-                  | #unit -> #string(c.name)
-                  | else -> #object([c.name => toJson(payload, c.type)])
+                  | #unit -> #some(tagJson(c.name))
+                  | else -> stepped(
+                    #field(c.name)
+                    toJson(payload, c.type)
+                    { j -> payloadJson(c.name, j) }
+                  )
             )
             | #none -> #skip
         }
@@ -131,36 +208,50 @@ def toJson: a, type a -> Json = { value, t ->
 
       match written
         | [j, ..._] -> j
-        | [] -> #null
-    | #nominal(n) -> crash(
+        | [] -> #some(#null)
+    | #nominal(n) -> #failed(
+      []
       "{n.name} of {n.module} can't be written as JSON: a nominal type shows its structure only to its own module"
     )
-    | #function -> crash("A function can't be written as JSON")
+    | #function -> #failed([], "A function can't be written as JSON")
 }
 
 --| `value` as JSON text, with no encoder written for it, printed compactly as [`print`] prints:
-  `json.encode((name = "Ada", age = 36))` is `{"name":"Ada","age":36}`. The value is written by
-  walking its type. A record is an object of its fields, each under its name, or the `name` of a
-  `@json(name = "...")` attribute written before it, and a tuple is an array. A tag with no payload
-  is its name, as a string, and a tag with one is an object with one member, the payload under the
-  tag's name, as `{"circle": 1.5}`. An option, `#some(x) | #none`, is `x` or `null`, and a record's
-  field that is `#none` is left out. A list, an array and a set are arrays, a map with string keys
-  is an object, and any other map an array of `[key, value]` pairs. Numbers of every size are
-  numbers, and `()` is `null`.
+  `json.encode((name = "Ada", age = 36))` is `#some("\{"name":"Ada","age":36}")`. The value is
+  written by walking its type. A record is an object of its fields, each under its name, or the
+  `name` of a `@json(name = "...")` attribute written before it, and a tuple is an array. A tag
+  with no payload is its name, as a string, and a tag with one is an object with one member, the
+  payload under the tag's name, as `{"circle": 1.5}`. An option, `#some(x) | #none`, is `x` or
+  `null`, and a record's field that is `#none` is left out. A list, an array and a set are arrays,
+  a map with string keys is an object, and any other map an array of `[key, value]` pairs. Numbers
+  of every size are numbers, and `()` is `null`.
 
-  A function and a nominal type can't be written: `encode` crashes. A nominal type shows its
-  structure only to its own module, and `encode` learns the value's type from the prelude's
-  `Typed`, so not even a nominal type of your own module is shown to it. Write one with
-  `json.encodeWith(x, json.encoderFor(type T))`, which sees `T` from where `type T` is written, or
-  with an [`Encoder`] of your own.
-export def encode: [Typed(a)] a -> string = { x ->
-  print(toJson(x, typeOf))
-}
+  A function and a nominal type can't be written: they are an [`EncodeError`], with the path to
+  them. A nominal type shows its structure only to its own module, and `encode` learns the value's
+  type from the prelude's `Typed`, so not even a nominal type of your own module is shown to it.
+  Write one with `json.encodeWith(x, json.encoderFor(type T))`, which sees `T` from where
+  `type T` is written, or with an [`Encoder`] of your own.
+-- The result is `#some(string) | EncodeError` written out: the compiler gives no `Typed` to a call
+-- from another package of a function whose result names a type alias of this one.
+export def encode
+  : [Typed(a)]
+    a -> #some(string) | #cannotEncode(path: list(#field(string) | #index(int)), message: string)
+  = { x ->
+    match toJson(x, typeOf)
+      | #some(j) -> #some(print(j))
+      | #failed(path, message) -> #cannotEncode(path = path, message = message)
+  }
 
 --| The encoder that writes a value of the type `t` as [`encode`] does: for writing a part of a
-  value by its type, within an [`Encoder`] of your own.
+  value by its type, within an [`Encoder`] of your own. An encoder can't fail, so a value that
+  `encode` gives an [`EncodeError`] for, a function or a nominal type `t` doesn't show the
+  structure of, crashes it.
 export def encoderFor: type a -> Encoder(a) = { t ->
-  { x -> toJson(x, t) }
+  { x ->
+    match toJson(x, t)
+      | #some(j) -> j
+      | #failed(path, message) -> crash(describe(#cannotEncode(path = path, message = message)))
+  }
 }
 
 -- Reading a value of any type -------------------------------------------------------------------

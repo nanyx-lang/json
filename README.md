@@ -30,7 +30,9 @@ type User = (name: string, born: int, nickname: #some(string) | #none, shapes: l
 def main = {
   def ada = User(name = "Ada", born = 1815, nickname = #none, shapes = [#circle(1.5)])
 
-  println(json.encode(ada))
+  match json.encode(ada)
+    | #some(text) -> println(text)
+    | failure -> println(json.describe(failure))
   -- {"name":"Ada","born":1815,"shapes":[{"circle":1.5}]}
 
   match json.decode('{"name": "Bob", "born": "1990", "shapes": []}', into = type User)
@@ -43,7 +45,9 @@ def main = {
 `json.encode` writes a value of any type, and `json.decode` reads one into the type it is given, by walking the
 type, with no encoder or decoder written for it. A record is an object, a tuple an array, a tag with no payload its
 name as a string and a tag with one `{"tag": payload}`, and an option `#some(x) | #none` is `x` or `null`, left out
-when it is a field. A field's key is its name, or the name a `@json(name = "user_id")` attribute before it gives.
+when it is a field. A field's key is its name, or the name a `@json(name = "user_id")` attribute before it gives. A
+function, or a nominal type whose structure the package can't see, is a `#cannotEncode` failure (an `EncodeError`)
+with the path to it.
 
 To write or read a type another way, build a `json.Decoder` and a `json.Encoder` from smaller ones and run them with
 `json.decodeWith` and `json.encodeWith`; `json.decoderFor(type T)` and `json.encoderFor(type T)` walk a part of the

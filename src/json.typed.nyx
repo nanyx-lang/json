@@ -13,6 +13,10 @@ export type PathStep = #field(string) | #index(int)
   value that didn't fit, each step in turn (empty for the root itself), and what was wrong with it.
 export type DecodeError = #doesNotFit(path: list(PathStep), message: string)
 
+--| Why [`encode`] wrote no text: `#cannotEncode`, with the path from the value's root to a part of
+  it that can't be written as JSON, a function or a nominal type, and why.
+export type EncodeError = #cannotEncode(path: list(PathStep), message: string)
+
 --| What reads an `a` from a [`Json`] value, or says why it can't. The decoders here make one,
   [`decoderFor`] makes one for any type by walking it, and [`decodeWith`] and [`decodeValueWith`]
   run one. A missing member is the decoder's to read too: only
@@ -299,15 +303,21 @@ export def pathText: list(PathStep) -> string = { steps ->
   )
 }
 
---| `e` as a message writes it. A [`DecodeError`] is its path, then what was wrong there, as
-  `users[2].age: Expected a whole number, found 2.5`, or only what was wrong for the root. A
-  [`JsonError`] is what was wrong, then where, as `Expected a value, found the end of the text, at
-  line 1, column 5`.
-export def describe: (DecodeError | JsonError) -> string = {
-  | #doesNotFit(e) -> (match e.path
-    | [] -> e.message
-    | path -> "{pathText(path)}: {e.message}")
+--| `e` as a message writes it. A [`DecodeError`] or an [`EncodeError`] is its path, then what was
+  wrong there, as `users[2].age: Expected a whole number, found 2.5`, or only what was wrong for
+  the root. A [`JsonError`] is what was wrong, then where, as `Expected a value, found the end of
+  the text, at line 1, column 5`.
+export def describe: (DecodeError | EncodeError | JsonError) -> string = {
+  | #doesNotFit(e) -> located(e.path, e.message)
+  | #cannotEncode(e) -> located(e.path, e.message)
   | #invalidJson(e) -> "{e.message}, at line {e.line}, column {e.column}"
+}
+
+--| `message`, after the path it is at, but at the root.
+def located: list(PathStep), string -> string = { path, message ->
+  match path
+    | [] -> message
+    | steps -> "{pathText(steps)}: {message}"
 }
 
 -- Encoding --------------------------------------------------------------------------------------
