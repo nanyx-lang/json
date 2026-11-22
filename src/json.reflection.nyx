@@ -2,6 +2,10 @@
 -- description, with no encoder or decoder written for it.
 @partial export module json
 
+-- Two compiler bugs limit the walk for now: a recursive type, as `Json` itself or a tree, isn't
+-- walked right (nanyx-lang/nanyx#2378), and a map's values are written through `map.toList`, since
+-- `map.map` at a type known only when the program runs breaks the backend (nanyx-lang/nanyx#2379).
+
 -- Writing a value of any type -------------------------------------------------------------------
 
 --| The key a record's field is written under: its name, or the `name` of a `@json(name = ...)`
@@ -227,7 +231,8 @@ def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value
   Write one with `json.encodeWith(x, json.encoderFor(type T))`, which sees `T` from where
   `type T` is written, or with an [`Encoder`] of your own.
 -- The result is `#some(string) | EncodeError` written out: the compiler gives no `Typed` to a call
--- from another package of a function whose result names a type alias of this one.
+-- from another package of a function whose result names a type alias of this one
+-- (nanyx-lang/nanyx#2380).
 export def encode
   : [Typed(a)] a -> #some(string) | #cannotEncode(path: list(#field(string) | #index(int)), message: string)
   = { x ->

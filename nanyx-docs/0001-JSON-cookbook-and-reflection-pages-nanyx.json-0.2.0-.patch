@@ -1,4 +1,4 @@
-From d465e056c1ceb000755cd4c9ddf089a587f9e0dc Mon Sep 17 00:00:00 2001
+From 6a51f67183f5f7e3f925f45f6c8ea4c4ce23ec0b Mon Sep 17 00:00:00 2001
 From: Richard Gibson <richard@gibson.cx>
 Date: Sun, 22 Nov 2026 23:11:59 +0000
 Subject: [PATCH] JSON cookbook and reflection pages: nanyx.json 0.2.0 encodes
@@ -7,8 +7,8 @@ Subject: [PATCH] JSON cookbook and reflection pages: nanyx.json 0.2.0 encodes
 ---
  docs/src/content/cookbook/json-parsing.md     | 90 ++++++++++++++-----
  .../work-in-progress/files-http-json.md       |  7 +-
- .../type-members-and-reflection.md            | 29 +++---
- 3 files changed, 84 insertions(+), 42 deletions(-)
+ .../type-members-and-reflection.md            | 35 +++++---
+ 3 files changed, 90 insertions(+), 42 deletions(-)
 
 diff --git a/docs/src/content/cookbook/json-parsing.md b/docs/src/content/cookbook/json-parsing.md
 index 09e42c7..33a4289 100644
@@ -174,24 +174,22 @@ index 44869c0..9d2c703 100644
    decoders' (`encode.string`, `json.string`). Attaching them to `Encoder` (`json.Encoder.string`) would keep one
    module, since a type's attached definitions are reached through an import's alias
 diff --git a/docs/src/content/work-in-progress/type-members-and-reflection.md b/docs/src/content/work-in-progress/type-members-and-reflection.md
-index 7db9b0d..f811a75 100644
+index 7db9b0d..3a0914c 100644
 --- a/docs/src/content/work-in-progress/type-members-and-reflection.md
 +++ b/docs/src/content/work-in-progress/type-members-and-reflection.md
-@@ -9,22 +9,23 @@ decoding with `build` and the synthesised `Typed(a)` are described on [Functions
+@@ -9,22 +9,29 @@ decoding with `build` and the synthesised `Typed(a)` are described on [Functions
  and how they compile, with the design behind them and the alternatives considered, in
  [Type descriptions](../deep-dives/type-descriptions). This page keeps what is still to be built on them.
  
 -# The problem left
 +# What is built on it
-+
-+`nanyx.json` 0.2.0 encodes and decodes any record or tag union by walking its type: `json.encode(user)` through
-+`Typed(a)`, and `json.decode(text, into = type User)`, as the [JSON cookbook](../cookbook/json-parsing) shows
-+([#1789](https://github.com/nanyx-lang/nanyx/issues/1789)).
  
 -Serialization, equality, hashing, printing and mapping to storage all follow a type's structure. A library can walk
 -a type's description to do them, but the standard ones don't yet. The [JSON cookbook](../cookbook/json-parsing) decodes
 -field by field, so each field name appears twice:
-+# The problem left
++`nanyx.json` 0.2.0 encodes and decodes any record or tag union by walking its type: `json.encode(user)` through
++`Typed(a)`, and `json.decode(text, into = type User)`, as the [JSON cookbook](../cookbook/json-parsing) shows
++([#1789](https://github.com/nanyx-lang/nanyx/issues/1789)).
  
 -```nanyx
 -def decodeUser: string -> #some(User) | DecodeError = { data ->
@@ -201,20 +199,28 @@ index 7db9b0d..f811a75 100644
 -    )
 -}
 -```
-+`dbg`, string interpolation and `==` work on any record because they are compiler intrinsics. What the JSON walker
-+can't do yet:
++# The problem left
  
 -`dbg`, string interpolation and `==` work on any record because they are compiler intrinsics.
++`dbg`, string interpolation and `==` work on any record because they are compiler intrinsics. What the JSON walker
++can't do yet:
++
 +- **A nominal type of your own through `Typed`.** The `typeOf` of a `Typed` instance is written in the prelude, so it
 +  sees every nominal type, even one of the caller's own module, as `#nominal`: `json.encode(money)` can't write a
-+  `protected` type of the module that calls it, though `json.decode(text, into = type Money)` reads it.
++  `protected` type of the module that calls it, though `json.decode(text, into = type Money)` reads it
++  ([#2382](https://github.com/nanyx-lang/nanyx/issues/2382)).
 +- **A type that provides a library's context itself.** The design says such a type wins over walking its description,
 +  but a walker has no way to ask whether a field's type, which it never learns, has an instance, so for now a type is
 +  written another way by a decoder or encoder built by hand.
++- **Compiler bugs the walker works around or stops at:** a case's `get` on a recursive type
++  ([#2378](https://github.com/nanyx-lang/nanyx/issues/2378)), `map.map` at a boxed type
++  ([#2379](https://github.com/nanyx-lang/nanyx/issues/2379)), `Typed` for an imported function whose result names a
++  type alias ([#2380](https://github.com/nanyx-lang/nanyx/issues/2380)), and a `set` type matched at run time
++  ([#2381](https://github.com/nanyx-lang/nanyx/issues/2381)).
  
  # Decisions
  
-@@ -42,6 +43,6 @@ Decided by the maintainer on 2026-11-17:
+@@ -42,6 +49,6 @@ Decided by the maintainer on 2026-11-17:
  
  | Step | Issue |
  |---|---|

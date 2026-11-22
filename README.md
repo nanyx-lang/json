@@ -49,6 +49,11 @@ when it is a field. A field's key is its name, or the name a `@json(name = "user
 function, or a nominal type whose structure the package can't see, is a `#cannotEncode` failure (an `EncodeError`)
 with the path to it.
 
+Limits, until compiler fixes land: a recursive type, such as a tree or a field of type `Json`, isn't walked right
+([nanyx#2378](https://github.com/nanyx-lang/nanyx/issues/2378)); `json.encode` sees even a nominal type of your own
+module as one it can't show ([nanyx#2382](https://github.com/nanyx-lang/nanyx/issues/2382)), so write one with
+`json.encodeWith(x, json.encoderFor(type T))`; and a set can't be decoded.
+
 To write or read a type another way, build a `json.Decoder` and a `json.Encoder` from smaller ones and run them with
 `json.decodeWith` and `json.encodeWith`; `json.decoderFor(type T)` and `json.encoderFor(type T)` walk a part of the
 value. `json.parse` reads text into a `Json` value, and `json.print` and `json.printPretty` write one. A failure is a
