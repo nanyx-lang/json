@@ -23,9 +23,9 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
 def versioned: json.Decoder(string) = json.andThen(
@@ -37,7 +37,7 @@ def versioned: json.Decoder(string) = json.andThen(
   }
 )
 
-show(json.decode('{"version": 1, "name": "Ada"}', versioned), encode.string)
-show(json.decode('{"version": 2, "fullName": "Ada Lovelace"}', versioned), encode.string)
-show(json.decode('{"version": 3}', versioned), encode.string)
-show(json.decode("null", json.succeed("default")), encode.string)
+show(json.decodeWith('{"version": 1, "name": "Ada"}', versioned), encode.string)
+show(json.decodeWith('{"version": 2, "fullName": "Ada Lovelace"}', versioned), encode.string)
+show(json.decodeWith('{"version": 3}', versioned), encode.string)
+show(json.decodeWith("null", json.succeed("default")), encode.string)

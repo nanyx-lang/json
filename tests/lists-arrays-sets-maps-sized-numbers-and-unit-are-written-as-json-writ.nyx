@@ -1,0 +1,49 @@
+-- lists, arrays, sets, maps, sized numbers and unit are written as JSON writes them
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+type Numbers = (
+  small: U8
+  signed: I16
+  big: U64
+  ratio: F32
+  nothing: ()
+)
+
+def numbers = Numbers(
+  small = U8.fromInt(200)
+  signed = I16.fromInt(-3)
+  big = U64.fromInt(7)
+  ratio = float.toF32(0.5)
+  nothing = ()
+)
+
+type Collections = (
+  names: list(string)
+  flags: array(bool)
+  scores: map(string, int)
+  byId: map(int, string)
+)
+
+def collections = Collections(
+  names = ["a", "b"]
+  flags = array.fromList([true, false])
+  scores = ["x" => 1, "y" => 2]
+  byId = [1 => "one", 2 => "two"]
+)
+
+println(json.encode(numbers))
+println(json.encode(collections))
+println(json.encode(tags = set.fromList([3])))
+
+match json.decode(json.encode(numbers), into = type Numbers)
+  | #some(n) -> println(json.encode(n))
+  | failure -> println(json.describe(failure))
+
+match json.decode(
+  '{"names": [], "flags": [true], "scores": {"z": 26}, "byId": []}'
+  into = type (names: list(string), flags: array(bool), scores: map(string, int))
+)
+  | #some(c) -> println(json.encode(c))
+  | failure -> println(json.describe(failure))

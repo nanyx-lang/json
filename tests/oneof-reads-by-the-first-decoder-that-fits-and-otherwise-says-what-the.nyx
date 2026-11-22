@@ -23,9 +23,9 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
 type Id = #number(int) | #name(string)
@@ -43,6 +43,6 @@ def idEncoder: json.Encoder(Id) = {
   | #name(s) -> encode.string(s)
 }
 
-show(json.decode('[1, "two", {"name": "three"}]', json.list(id)), encode.list(idEncoder))
-show(json.decode('[1, {"name": 3}]', json.list(id)), encode.list(idEncoder))
-show(json.decode("true", json.oneOf([])), encode.bool)
+show(json.decodeWith('[1, "two", {"name": "three"}]', json.list(id)), encode.list(idEncoder))
+show(json.decodeWith('[1, {"name": 3}]', json.list(id)), encode.list(idEncoder))
+show(json.decodeWith("true", json.oneOf([])), encode.bool)

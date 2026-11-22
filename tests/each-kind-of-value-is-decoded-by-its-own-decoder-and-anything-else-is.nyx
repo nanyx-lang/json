@@ -23,24 +23,24 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
-show(json.decode("2.5", json.float), encode.float)
-show(json.decode("-7", json.int), encode.int)
-show(json.decode("true", json.bool), encode.bool)
-show(json.decode('"hi"', json.string), encode.string)
-show(json.decode('[1, {"a": null}]', json.value), { v -> v })
+show(json.decodeWith("2.5", json.float), encode.float)
+show(json.decodeWith("-7", json.int), encode.int)
+show(json.decodeWith("true", json.bool), encode.bool)
+show(json.decodeWith('"hi"', json.string), encode.string)
+show(json.decodeWith('[1, {"a": null}]', json.value), { v -> v })
 
 show(
-  json.decode('{"en": "Hello", "fr": "Bonjour"}', json.dict(json.string))
+  json.decodeWith('{"en": "Hello", "fr": "Bonjour"}', json.dict(json.string))
   encode.dict(encode.string)
 )
 
-show(json.decode("null", json.string), encode.string)
-show(json.decode("1e30", json.int), encode.int)
-show(json.decode("[]", json.bool), encode.bool)
-show(json.decode("\{}", json.float), encode.float)
-show(json.decode("[1, 2", json.int), encode.int)
+show(json.decodeWith("null", json.string), encode.string)
+show(json.decodeWith("1e30", json.int), encode.int)
+show(json.decodeWith("[]", json.bool), encode.bool)
+show(json.decodeWith("\{}", json.float), encode.float)
+show(json.decodeWith("[1, 2", json.int), encode.int)

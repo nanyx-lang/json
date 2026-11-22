@@ -23,9 +23,9 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
 def items = list.init(
@@ -33,8 +33,8 @@ def items = list.init(
   { i -> '{"name": "u' ++ int.toString(i) ++ '", "age": ' ++ int.toString(i % 90) ++ '}' }
 )
 
-match json.decode("[" ++ string.join(items, ",") ++ "]", json.list(user))
+match json.decodeWith("[" ++ string.join(items, ",") ++ "]", json.list(user))
   | #some(users) ->
     println(list.length(users))
-    println(string.length(json.encode(users, encode.list(userEncoder))))
-  | #error(e) -> println(json.describe(e))
+    println(string.length(json.encodeWith(users, encode.list(userEncoder))))
+  | failure -> println(json.describe(failure))

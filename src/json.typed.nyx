@@ -9,12 +9,13 @@
   name, or the element of an array at this index, counting from 0.
 export type PathStep = #field(string) | #index(int)
 
---| Why a decoder read no value: the path from the root of the document to the value that didn't
-  fit, each step in turn (empty for the root itself), and what was wrong with it.
-export type DecodeError = (path: list(PathStep), message: string)
+--| Why a decoder read no value: `#doesNotFit`, with the path from the root of the document to the
+  value that didn't fit, each step in turn (empty for the root itself), and what was wrong with it.
+export type DecodeError = #doesNotFit(path: list(PathStep), message: string)
 
---| What reads an `a` from a [`Json`] value, or says why it can't. The decoders here make one, and
-  [`decode`] and [`decodeValue`] run one. A missing member is the decoder's to read too: only
+--| What reads an `a` from a [`Json`] value, or says why it can't. The decoders here make one,
+  [`decoderFor`] makes one for any type by walking it, and [`decodeWith`] and [`decodeValueWith`]
+  run one. A missing member is the decoder's to read too: only
   [`optional`] reads one, as `#none`.
 export type Decoder(a) = private (
   run: Json -> #some(a) | #failed(list(PathStep), string)
@@ -107,7 +108,10 @@ export def list: Decoder(a) -> Decoder(list(a)) = { decoder ->
 
 --| `members` read by `decoder`, in front of `acc`, last first.
 def decodeMembers
-  : Decoder(a), list((string, Json)), list((string, a)) -> #some(map(string, a)) | #failed(list(PathStep), string)
+  : Decoder(a),
+    list((string, Json)),
+    list((string, a))
+    -> #some(map(string, a)) | #failed(list(PathStep), string)
   = { decoder, members, acc ->
     match members
       | [] -> #some(map.fromList(list.reverse(acc)))
@@ -203,7 +207,9 @@ export def andThen: Decoder(a), (a -> Decoder(b)) -> Decoder(b) = { decoder, nex
 --| The failure of `failures` with the longest path, the one that got furthest into the value, or
   the first of those that tie: what a decoder of [`oneOf`] that nearly fitted says was wrong.
 def furthest
-  : list((list(PathStep), string)), (list(PathStep), string) -> #some(a) | #failed(list(PathStep), string)
+  : list((list(PathStep), string)),
+    (list(PathStep), string)
+    -> #some(a) | #failed(list(PathStep), string)
   = { failures, best ->
     match failures
       | [] -> #failed(best.0, best.1)
@@ -216,7 +222,10 @@ def furthest
 --| `value` read by the first of `decoders` that reads it, with `failures` those before that didn't,
   last first.
 def firstOf
-  : list(Decoder(a)), Json, list((list(PathStep), string)) -> #some(a) | #failed(list(PathStep), string)
+  : list(Decoder(a)),
+    Json,
+    list((list(PathStep), string))
+    -> #some(a) | #failed(list(PathStep), string)
   = { decoders, v, failures ->
     match decoders
       | [] -> (match list.reverse(failures)
@@ -259,21 +268,20 @@ export def record: [c] ([DecodeRecord, c] () -> Decoder(b)) -> Decoder(b) = { bl
   use DecodeRecord(try = { decoder, next -> andThen(decoder, next) }, return = succeed) in block()
 }
 
---| What `decoder` reads from `value`, or why it reads nothing, with the path to what didn't fit.
-export def decodeValue: Json, Decoder(a) -> #some(a) | #error(DecodeError) = { v, decoder ->
+--| What `decoder` reads from `value`, or a [`DecodeError`] with the path to what didn't fit, and
+  why.
+export def decodeValueWith: Json, Decoder(a) -> #some(a) | DecodeError = { v, decoder ->
   match runOn(decoder, v)
     | #some(x) -> #some(x)
-    | #failed(path, message) -> #error(DecodeError(path = path, message = message))
+    | #failed(path, message) -> #doesNotFit(path = path, message = message)
 }
 
---| What `decoder` reads from the JSON `text`, or why it reads nothing: text that isn't JSON is an
-  error at the root, whose message says where in the text, by line and column.
-export def decode: string, Decoder(a) -> #some(a) | #error(DecodeError) = { text, decoder ->
+--| What `decoder` reads from the JSON `text`, or why it reads nothing: an `#invalidJson` for text
+  that isn't JSON, which says where in the text, or a [`DecodeError`] for a value that doesn't fit.
+export def decodeWith: string, Decoder(a) -> #some(a) | DecodeError | JsonError = { text, decoder ->
   match parse(text)
-    | #some(v) -> decodeValue(v, decoder)
-    | #error(e) -> #error(
-      DecodeError(path = [], message = "{e.message}, at line {e.line}, column {e.column}")
-    )
+    | #some(v) -> decodeValueWith(v, decoder)
+    | #invalidJson(e) -> #invalidJson(e)
 }
 
 --| `steps` as a path is written: a member by its name, after a `.` but at the start, and an
@@ -291,12 +299,15 @@ export def pathText: list(PathStep) -> string = { steps ->
   )
 }
 
---| `e` as a message writes it: its path, then what was wrong there, as
-  `users[2].age: Expected a whole number, found 2.5`, or only what was wrong for the root.
-export def describe: DecodeError -> string = { e ->
-  match e.path
+--| `e` as a message writes it. A [`DecodeError`] is its path, then what was wrong there, as
+  `users[2].age: Expected a whole number, found 2.5`, or only what was wrong for the root. A
+  [`JsonError`] is what was wrong, then where, as `Expected a value, found the end of the text, at
+  line 1, column 5`.
+export def describe: (DecodeError | JsonError) -> string = {
+  | #doesNotFit(e) -> (match e.path
     | [] -> e.message
-    | path -> "{pathText(path)}: {e.message}"
+    | path -> "{pathText(path)}: {e.message}")
+  | #invalidJson(e) -> "{e.message}, at line {e.line}, column {e.column}"
 }
 
 -- Encoding --------------------------------------------------------------------------------------
@@ -306,6 +317,6 @@ export def describe: DecodeError -> string = { e ->
 export type Encoder(a) = a -> Json
 
 --| `value` as JSON text, written by `encoder` and printed compactly as [`print`] prints.
-export def encode: a, Encoder(a) -> string = { x, encoder ->
+export def encodeWith: a, Encoder(a) -> string = { x, encoder ->
   print(encoder(x))
 }

@@ -1,0 +1,46 @@
+-- json.encode writes any record or tag union by walking its type, and json.decode reads it back
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+type Shape = #circle(float) | #rect(width: float, height: float) | #dot
+
+type User = (
+  name: string
+  age: int
+  @json(name = "e_mail")
+  email: string
+  nickname: #some(string) | #none
+  shapes: list(Shape)
+  position: (int, bool)
+)
+
+def ada = User(
+  name = "Ada"
+  age = 36
+  email = "ada@example.com"
+  nickname = #none
+  shapes = [#circle(1.5), #rect(width = 2.0, height = 3.0), #dot]
+  position = (3, true)
+)
+
+def text = json.encode(ada)
+
+println(text)
+
+match json.decode(text, into = type User)
+  | #some(user) -> println(user == ada)
+  | failure -> println(json.describe(failure))
+
+def bob = '{"name": "Bob", "age": 25, "e_mail": "bob@example.com", "nickname": "Bobby", "shapes": [], "position": [0, false]}'
+
+match json.decode(bob, into = type User)
+  | #some(user) -> println(json.encode(user))
+  | failure -> println(json.describe(failure))
+
+match json.decode(
+  '{"name": "Cy", "age": 3, "e_mail": "", "nickname": null, "shapes": ["dot"], "position": [1, true]}'
+  into = type User
+)
+  | #some(user) -> println(user.nickname)
+  | failure -> println(json.describe(failure))

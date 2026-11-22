@@ -1,0 +1,406 @@
+-- Part of the module json, which json.nyx starts: encoding and decoding any type by walking its
+-- description, with no encoder or decoder written for it.
+@partial export module json
+
+-- Writing a value of any type -------------------------------------------------------------------
+
+--| The key a record's field is written under: its name, or the `name` of a `@json(name = ...)`
+  attribute written before it.
+def keyOf
+  : string, list(name: string, arguments: list((string, string))) -> string
+  = { name, attributes ->
+    def renames =
+      attributes
+        \list.filter { at -> at.name == "json" }
+        \list.flatMap { at -> at.arguments }
+        \list.filter { arg -> arg.0 == "name" }
+
+    match renames
+      | [(_, key), ..._] -> key
+      | [] -> name
+  }
+
+--| Whether the fields named `names` are a tuple's: `0`, `1` and so on, in order.
+def isTuple: list(string) -> bool = { names ->
+  not list.isEmpty(names) and list.all(
+    list.mapIndexed(names, { i, name -> name == "{i}" })
+    { same -> same }
+  )
+}
+
+--| Whether the cases named `names` are an option's: `#some` and `#none`.
+def isOption: list(string) -> bool = { names ->
+  list.sort(names) == ["none", "some"]
+}
+
+--| The module this file is part of, as a type's description names it: a `Json` value is written as
+  itself, not as a tag union.
+def jsonModule: string = match type Json
+  | #union(u) -> u.module
+  | else -> ""
+
+--| Whether the union named `name` in `module` is [`Json`]. A type of another module is named as
+  the module that names it qualifies it, `json.Json`.
+def isJson: string, string -> bool = { name, module ->
+  module == jsonModule and (name == "Json" or string.endsWith(name, ".Json"))
+}
+
+--| Whether `value`, of the type `t`, is the `#none` of an option.
+def isNone: a, type a -> bool = { value, t ->
+  match t
+    | #union(u) ->
+      if not isOption(list.map(u.cases, { c -> c.name }))
+        then false
+        else list.any(
+          u.cases
+          { c ->
+            match c.get(value)
+              | #some(_) -> c.name == "none"
+              | #none -> false
+          }
+        )
+    | else -> false
+}
+
+--| `m`, whose keys are of the type `key` and values of the type `item`, as a `Json` value: an
+  object for string keys, and otherwise an array of `[key, value]` pairs.
+def mapToJson: map(k, v), type k, type v -> Json = { m, key, item ->
+  match key
+    | #string -> #object(
+      map.fromList(list.map(map.toList(m), { pair -> (pair.0, toJson(pair.1, item)) }))
+    )
+    | else -> #array(
+      list.map(map.toList(m), { pair -> #array([toJson(pair.0, key), toJson(pair.1, item)]) })
+    )
+}
+
+--| `value`, of the type `t`, as a `Json` value: what [`encode`] writes.
+def toJson: a, type a -> Json = { value, t ->
+  match t
+    | #int -> #number(int.toFloat(value))
+    | #float -> #number(value)
+    | #bool -> #bool(value)
+    | #string -> #string(value)
+    | #unit -> #null
+    | #i8 -> #number(I8.toFloat(value))
+    | #i16 -> #number(I16.toFloat(value))
+    | #i32 -> #number(I32.toFloat(value))
+    | #u8 -> #number(U8.toFloat(value))
+    | #u16 -> #number(U16.toFloat(value))
+    | #u32 -> #number(U32.toFloat(value))
+    | #u64 -> #number(U64.toFloat(value))
+    | #f32 -> #number(F32.toFloat(value))
+    | #list(elem) -> #array(list.map(value, { x -> toJson(x, elem) }))
+    | #array(elem) -> #array(list.map(array.toList(value), { x -> toJson(x, elem) }))
+    | #set(elem) -> #array(list.map(set.toList(value), { x -> toJson(x, elem) }))
+    | #map(key, item) -> mapToJson(value, key, item)
+    | #record(r) ->
+      if isTuple(list.map(r.fields, { f -> f.name }))
+        then #array(list.map(r.fields, { f -> toJson(f.get(value), f.type) }))
+        else #object(
+          map.fromList(
+            list.filterMap(
+              r.fields
+              { f ->
+                if isNone(f.get(value), f.type)
+                  then #skip
+                  else #some(keyOf(f.name, f.attributes), toJson(f.get(value), f.type))
+              }
+            )
+          )
+        )
+    | #union(u) ->
+      def names = list.map(u.cases, { c -> c.name })
+
+      def written = list.filterMap(
+        u.cases
+        { c ->
+          match c.get(value)
+            | #some(payload) -> #some(
+              if isJson(u.name, u.module) or isOption(names)
+                then (if c.name == "null" or c.name == "none"
+                  then #null
+                  else toJson(payload, c.type))
+                else match c.type
+                  | #unit -> #string(c.name)
+                  | else -> #object([c.name => toJson(payload, c.type)])
+            )
+            | #none -> #skip
+        }
+      )
+
+      match written
+        | [j, ..._] -> j
+        | [] -> #null
+    | #nominal(n) -> crash(
+      "{n.name} of {n.module} can't be written as JSON: a nominal type shows its structure only to its own module"
+    )
+    | #function -> crash("A function can't be written as JSON")
+}
+
+--| `value` as JSON text, with no encoder written for it, printed compactly as [`print`] prints:
+  `json.encode((name = "Ada", age = 36))` is `{"name":"Ada","age":36}`. The value is written by
+  walking its type. A record is an object of its fields, each under its name, or the `name` of a
+  `@json(name = "...")` attribute written before it, and a tuple is an array. A tag with no payload
+  is its name, as a string, and a tag with one is an object with one member, the payload under the
+  tag's name, as `{"circle": 1.5}`. An option, `#some(x) | #none`, is `x` or `null`, and a record's
+  field that is `#none` is left out. A list, an array and a set are arrays, a map with string keys
+  is an object, and any other map an array of `[key, value]` pairs. Numbers of every size are
+  numbers, and `()` is `null`.
+
+  A function and a nominal type can't be written: `encode` crashes. A nominal type shows its
+  structure only to its own module, and `encode` learns the value's type from the prelude's
+  `Typed`, so not even a nominal type of your own module is shown to it. Write one with
+  `json.encodeWith(x, json.encoderFor(type T))`, which sees `T` from where `type T` is written, or
+  with an [`Encoder`] of your own.
+export def encode: [Typed(a)] a -> string = { x ->
+  print(toJson(x, typeOf))
+}
+
+--| The encoder that writes a value of the type `t` as [`encode`] does: for writing a part of a
+  value by its type, within an [`Encoder`] of your own.
+export def encoderFor: type a -> Encoder(a) = { t ->
+  { x -> toJson(x, t) }
+}
+
+-- Reading a value of any type -------------------------------------------------------------------
+
+--| `read`, with `step` in front of its path when it failed.
+def within
+  : PathStep,
+    (#some(a) | #failed(list(PathStep), string))
+    -> #some(a) | #failed(list(PathStep), string)
+  = { step, read ->
+    match read
+      | #some(x) -> #some(x)
+      | #failed(path, message) -> #failed([step, ...path], message)
+  }
+
+--| A whole number in `v`, made a sized number by `convert`, which names its range in `range`.
+def sizedOf
+  : Json, (int -> #some(b) | #outOfRange), string -> #some(b) | #failed(list(PathStep), string)
+  = { v, convert, range ->
+    match intOf(v)
+      | #some(n) -> (match convert(n)
+        | #some(x) -> #some(x)
+        | #outOfRange -> #failed([], "Expected a whole number from {range}, found {n}"))
+      | #failed(path, message) -> #failed(path, message)
+  }
+
+--| `items` read as values of the type `t`, from `index` on, in front of `acc`, last first.
+def itemsOf
+  : list(Json), type a, int, list(a) -> #some(list(a)) | #failed(list(PathStep), string)
+  = { items, t, index, acc ->
+    match items
+      | [] -> #some(list.reverse(acc))
+      | [item, ...rest] -> match fromJson(item, t)
+        | #some(x) -> itemsOf(rest, t, index + 1, [x, ...acc])
+        | #failed(path, message) -> #failed([#index(index), ...path], message)
+  }
+
+--| The elements of the array `v`, read as values of the type `t`.
+def arrayOf: Json, type a -> #some(list(a)) | #failed(list(PathStep), string) = { v, t ->
+  match v
+    | #array(items) -> itemsOf(items, t, 0, [])
+    | other -> mismatch("an array", other)
+}
+
+--| `members` read as values of the type `t`, in front of `acc`, last first.
+def membersOf
+  : list((string, Json)),
+    type a,
+    list((string, a))
+    -> #some(map(string, a)) | #failed(list(PathStep), string)
+  = { members, t, acc ->
+    match members
+      | [] -> #some(map.fromList(list.reverse(acc)))
+      | [(name, member), ...rest] -> match fromJson(member, t)
+        | #some(x) -> membersOf(rest, t, [(name, x), ...acc])
+        | #failed(path, message) -> #failed([#field(name), ...path], message)
+  }
+
+--| The object `v` read as a map, its values of the type `item`. Only a map whose `key` type is
+  `string` can be read.
+def mapOf
+  : Json, type k, type v -> #some(map(k, v)) | #failed(list(PathStep), string)
+  = { v, key, item ->
+    match key
+      | #string -> (match v
+        | #object(members) -> membersOf(map.toList(members), item, [])
+        | other -> mismatch("an object", other))
+      | else -> #failed([], "A map can be read from JSON only with string keys")
+  }
+
+--| `names` as a message lists them: `'a', 'b' or 'c'`.
+def listed: list(string) -> string = { names ->
+  match list.reverse(names)
+    | [] -> "none"
+    | [only] -> "'{only}'"
+    | [last, ...rest] -> list.reverse(rest) \list.map { n -> "'{n}'" } \string.join(
+      ", "
+    ) ++ " or '{last}'"
+}
+
+--| What [`Json`] value `v` is, as the name of its tag.
+def tagOf: Json -> string = {
+  | #null -> "null"
+  | #bool(_) -> "bool"
+  | #number(_) -> "number"
+  | #string(_) -> "string"
+  | #array(_) -> "array"
+  | #object(_) -> "object"
+}
+
+--| A value of the type `t` read from `v`, or the path to what didn't fit, from `v`, and why: what
+  [`decoderFor`] reads.
+def fromJson: Json, type a -> #some(a) | #failed(list(PathStep), string) = { v, t ->
+  match t
+    | #int -> intOf(v)
+    | #float -> floatOf(v)
+    | #bool -> boolOf(v)
+    | #string -> stringOf(v)
+    | #unit -> (match v
+      | #null -> #some()
+      | other -> mismatch("null", other))
+    | #i8 -> sizedOf(v, { n -> int.toI8(n) }, "-128 to 127")
+    | #i16 -> sizedOf(v, { n -> int.toI16(n) }, "-32768 to 32767")
+    | #i32 -> sizedOf(v, { n -> int.toI32(n) }, "-2147483648 to 2147483647")
+    | #u8 -> sizedOf(v, { n -> int.toU8(n) }, "0 to 255")
+    | #u16 -> sizedOf(v, { n -> int.toU16(n) }, "0 to 65535")
+    | #u32 -> sizedOf(v, { n -> int.toU32(n) }, "0 to 4294967295")
+    | #u64 -> sizedOf(v, { n -> int.toU64(n) }, "0 to 18446744073709551615")
+    | #f32 -> (match floatOf(v)
+      | #some(x) -> #some(float.toF32(x))
+      | #failed(path, message) -> #failed(path, message))
+    | #list(elem) -> arrayOf(v, elem)
+    | #array(elem) -> (match arrayOf(v, elem)
+      | #some(xs) -> #some(array.fromList(xs))
+      | #failed(path, message) -> #failed(path, message))
+    | #set(elem) -> #failed([], "A set can't be read from JSON: read a list, and make a set of it")
+    | #map(key, item) -> mapOf(v, key, item)
+    | #record(r) ->
+      if isTuple(list.map(r.fields, { f -> f.name }))
+        then (match v
+          | #array(items) ->
+            if list.length(items) != list.length(r.fields)
+              then #failed(
+                []
+                "Expected an array of {list.length(r.fields)} elements, found {list.length(items)}"
+              )
+              else r.build { f ->
+                match int.fromString(f.name)
+                  | #some(i) -> (match list.at(items, i)
+                    | #some(item) -> within(#index(i), fromJson(item, f.type))
+                    | #notFound -> #failed([#index(i)], "Expected an element, found none"))
+                  | #invalidInt -> #failed([], "Expected an element, found none")
+              }
+          | other -> mismatch("an array", other))
+        else match v
+          | #object(members) -> r.build { f ->
+            def key = keyOf(f.name, f.attributes)
+
+            match map.get(members, key)
+              | #some(member) -> within(#field(key), fromJson(member, f.type))
+              | #notFound ->
+                if isOptionType(f.type)
+                  then fromJson(#null, f.type)
+                  else #failed([#field(key)], "Expected a member '{key}', found none")
+          }
+          | other -> mismatch("an object", other)
+    | #union(u) ->
+      def names = list.map(u.cases, { c -> c.name })
+
+      def wanted =
+        if isJson(u.name, u.module)
+          then #tag(tagOf(v), v, #inline)
+          else if isOption(names)
+            then (match v
+              | #null -> #tag("none", #null, #inline)
+              | other -> #tag("some", other, #inline))
+            else match v
+              | #string(name) -> #tag(name, #null, #bare)
+              | #object(members) -> (match map.toList(members)
+                | [(name, payload)] -> #tag(name, payload, #member)
+                | _ -> #wrong)
+              | _ -> #wrong
+
+      match wanted
+        | #wrong -> mismatch(
+          "one of the tags {listed(names)}, as a string or an object of one member"
+          v
+        )
+        | #tag(name, payload, written) -> caseOf(u.cases, name, names, payload, written)
+    | #nominal(n) -> #failed(
+      []
+      "{n.name} of {n.module} can't be read from JSON: a nominal type shows its structure only to its own module"
+    )
+    | #function -> #failed([], "A function can't be read from JSON")
+}
+
+--| Whether `t` is an option's type, `#some(x) | #none`.
+def isOptionType: type a -> bool = { t ->
+  match t
+    | #union(u) -> isOption(list.map(u.cases, { c -> c.name }))
+    | else -> false
+}
+
+--| The value of the case of `cases` named `name`, its payload read from `payload`. `names` are the
+  names of all the cases, for a message. `written` says how the tag was written: `#bare`, as a
+  string, for a tag with no payload, which `payload` is `null` for; `#member`, as the one member
+  of an object, under which `payload` is; or `#inline`, by the value itself, as [`Json`]'s tags and
+  an option's are.
+def caseOf
+  : list(Case(a)),
+    string,
+    list(string),
+    Json,
+    (#bare | #member | #inline)
+    -> #some(a) | #failed(list(PathStep), string)
+  = { cases, name, names, payload, written ->
+    match list.find(cases, { c -> c.name == name })
+      | #some(c) -> (match fromJson(payload, c.type)
+        | #some(p) -> #some(c.build(p))
+        | #failed(path, message) -> match written
+          | #inline -> #failed(path, message)
+          | #member -> #failed([#field(name), ...path], message)
+          | #bare -> match c.type
+            | #unit -> #failed(path, message)
+            | else -> #failed(
+              path
+              "Expected the tag '{name}' with its value, as an object with the one member '{name}', found a string"
+            ))
+      | #notFound -> #failed([], "Expected one of the tags {listed(names)}, found '{name}'")
+  }
+
+--| The decoder that reads a value of the type `t` by walking it, as [`decode`] does: for reading a
+  part of a value by its type, within a [`Decoder`] of your own. A member that is missing reads as
+  `#none` when `t` is an option's type, and is an error otherwise.
+export def decoderFor: type a -> Decoder(a) = { t ->
+  def absent =
+    if isOptionType(t)
+      then (match fromJson(#null, t)
+        | #some(x) -> #some(x)
+        | #failed(_, _) -> #none)
+      else #none
+
+  Decoder(run = { v -> fromJson(v, t) }, absent = absent)
+}
+
+--| A value of the type `into` read from `value` by walking the type, as [`decode`] reads one, or a
+  [`DecodeError`] with the path to what didn't fit, and why.
+export def decodeValue: (Json, into: type) -> #some(into) | DecodeError = { v, into ->
+  decodeValueWith(v, decoderFor(into))
+}
+
+--| A value of the type `into` read from the JSON `text`, with no decoder written for it:
+  `json.decode(text, into = type User)`. The type is walked as [`encode`] walks it, so what
+  `encode` writes, `decode` reads back. A missing member is an error, but for a field whose type is
+  an option, which reads a missing member and `null` as `#none`. A number read as an `int` must be
+  whole, and one read as a sized number must be in its range.
+
+  Text that isn't JSON is an `#invalidJson`, and a value that doesn't fit a [`DecodeError`], with
+  the path to it. A set, a map with keys other than strings, a function, and a nominal type of
+  another module can't be read; read one with a [`Decoder`] of your own instead.
+export def decode: (string, into: type) -> #some(into) | DecodeError | JsonError = { text, into ->
+  decodeWith(text, decoderFor(into))
+}

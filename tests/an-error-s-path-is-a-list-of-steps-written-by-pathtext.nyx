@@ -23,17 +23,17 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
-match json.decode(
+match json.decodeWith(
   '{"a": [{"b": [0, "x"]}]}'
   json.field("a", json.list(json.field("b", json.list(json.int))))
 )
   | #some(_) -> println("read")
-  | #error(e) ->
+  | #doesNotFit(e) ->
     println(
       e.path \map {
         | #field(name) -> "field {name}"
@@ -43,5 +43,6 @@ match json.decode(
 
     println(json.pathText(e.path))
     println(e.message)
+  | #invalidJson(e) -> println(e.message)
 
 println(json.pathText([]) == "")

@@ -1,0 +1,4 @@
+{"name":"Ada","age":36,"e_mail":"ada@example.com","shapes":[{"circle":1.5},{"rect":{"width":2,"height":3}},"dot"],"position":[3,true]}
+true
+{"name":"Bob","age":25,"e_mail":"bob@example.com","nickname":"Bobby","shapes":[],"position":[0,false]}
+#none
