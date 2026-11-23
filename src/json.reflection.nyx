@@ -215,6 +215,9 @@ def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value
     | #function -> #failed([], "A function can't be written as JSON")
 }
 
+-- The result is `#some(string) | EncodeError` written out: the compiler gives no `Typed` to a call
+-- from another package of a function whose result names a type alias of this one
+-- (nanyx-lang/nanyx#2380).
 --| `value` as JSON text, with no encoder written for it, printed compactly as [`print`] prints:
   `json.encode((name = "Ada", age = 36))` is `#some("\{"name":"Ada","age":36}")`. The value is
   written by walking its type. A record is an object of its fields, each under its name, or the
@@ -230,9 +233,6 @@ def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value
   type from the prelude's `Typed`, so not even a nominal type of your own module is shown to it.
   Write one with `json.encodeWith(x, json.encoderFor(type T))`, which sees `T` from where
   `type T` is written, or with an [`Encoder`] of your own.
--- The result is `#some(string) | EncodeError` written out: the compiler gives no `Typed` to a call
--- from another package of a function whose result names a type alias of this one
--- (nanyx-lang/nanyx#2380).
 export def encode
   : [Typed(a)] a -> #some(string) | #cannotEncode(path: list(#field(string) | #index(int)), message: string)
   = { x ->
