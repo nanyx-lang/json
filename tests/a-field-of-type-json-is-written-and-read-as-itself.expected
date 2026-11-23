@@ -1,0 +1,4 @@
+{"kind":"created","payload":{"id":7,"tags":["x",null],"nested":{"ok":true}},"extra":null}
+true
+[1,"two",{"three":3.5}]
+true

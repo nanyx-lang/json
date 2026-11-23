@@ -12,7 +12,7 @@ In a package:
 nanyx install nanyx.json
 ```
 
-That adds `(package = "nanyx.json", version = "0.2")` to the manifest's `dependencies`, locks the version in
+That adds `(package = "nanyx.json", version = "0.3")` to the manifest's `dependencies`, locks the version in
 `nanyx.lock` and downloads it.
 
 ## Use
@@ -49,10 +49,14 @@ when it is a field. A field's key is its name, or the name a `@json(name = "user
 function, or a nominal type whose structure the package can't see, is a `#cannotEncode` failure (an `EncodeError`)
 with the path to it.
 
-Limits, until compiler fixes land: a recursive type, such as a tree or a field of type `Json`, isn't walked right
-([nanyx#2378](https://github.com/nanyx-lang/nanyx/issues/2378)); `json.encode` sees even a nominal type of your own
-module as one it can't show ([nanyx#2382](https://github.com/nanyx-lang/nanyx/issues/2382)), so write one with
-`json.encodeWith(x, json.encoderFor(type T))`; and a set can't be decoded.
+A recursive type is walked as any other: a tree is a tag inside a tag, and a field of type `json.Json` is written
+and read as itself. `json.encodeValue` writes a value as a `Json` value instead of text, to put in a larger one or to
+print with `json.printPretty`.
+
+Limits: `json.encode` sees even a nominal type of your own module as one it can't show, until a compiler fix lands
+([nanyx#2382](https://github.com/nanyx-lang/nanyx/issues/2382)), so write one with
+`json.encodeWith(x, json.encoderFor(type T))`; and a set, or a map whose keys aren't strings, can't be decoded: read
+a list, and make one of it.
 
 To write or read a type another way, build a `json.Decoder` and a `json.Encoder` from smaller ones and run them with
 `json.decodeWith` and `json.encodeWith`; `json.decoderFor(type T)` and `json.encoderFor(type T)` walk a part of the
@@ -76,6 +80,6 @@ tests/run.sh                 # with nanyx on the PATH
 NANYX=path/to/nanyx tests/run.sh
 ```
 
-CI builds and tests the package with the latest released compiler. To release, set the manifest's `version` (or run
-`nanyx bump`) and run `nanyx publish`, which creates the GitHub release with the `.nyxpkg` and registers the version
-with the [package index](https://github.com/nanyx-lang/packages).
+CI builds and tests the package with the compiler release its workflow names, 0.35.0. To release, set the manifest's
+`version` (or run `nanyx bump`) and run `nanyx publish`, which creates the GitHub release with the `.nyxpkg` and
+registers the version with the [package index](https://github.com/nanyx-lang/packages).
