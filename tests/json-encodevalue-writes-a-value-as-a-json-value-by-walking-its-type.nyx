@@ -1,0 +1,34 @@
+-- json.encodeValue writes a value as a Json value by walking its type
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+type Shape = #circle(float) | #rect(width: float, height: float) | #dot
+
+type Drawing = (title: string, shapes: list(Shape), layers: map(string, list(Shape)))
+
+def drawing = Drawing(
+  title = "Plan"
+  shapes = [#circle(1.5), #dot]
+  layers = ["ground" => [#rect(width = 2.0, height = 3.0)], "roof" => []]
+)
+
+def written: #some(json.Json) | json.EncodeError = json.encodeValue(drawing)
+
+match written
+  | #some(j) -> println(json.printPretty(j, indent = 2))
+  | failure -> println(json.describe(failure))
+
+match json.encodeValue(drawing)
+  | #some(j) -> println(json.print(j) == json.encode(drawing) \orCrash("written"))
+  | failure -> println(json.describe(failure))
+
+match json.encodeValue(drawing)
+  | #some(j) -> (match json.decodeValue(j, into = type Drawing)
+    | #some(d) -> println(d == drawing)
+    | failure -> println(json.describe(failure)))
+  | failure -> println(json.describe(failure))
+
+match json.encodeValue(name = "f", handlers = ["click" => { (n: int) -> n + 1 }])
+  | #some(_) -> println("written")
+  | failure -> println(json.describe(failure))

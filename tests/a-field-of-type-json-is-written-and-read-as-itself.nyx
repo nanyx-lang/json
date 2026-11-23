@@ -1,0 +1,24 @@
+-- a field of type Json is written and read as itself
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+type Event = (kind: string, payload: json.Json, extra: #some(json.Json) | #none)
+
+def payload = json.parse('{"id": 7, "tags": ["x", null], "nested": {"ok": true}}') \orCrash("JSON")
+
+def event = Event(kind = "created", payload = payload, extra = #some(#null))
+
+def text = json.encode(event) \orCrash("an Event is written")
+
+println(text)
+
+match json.decode(text, into = type Event)
+  | #some(e) -> println(json.print(e.payload) == json.print(payload))
+  | failure -> println(json.describe(failure))
+
+match json.decode('{"kind": "deleted", "payload": [1, "two", {"three": 3.5}]}', into = type Event)
+  | #some(e) -> println(json.print(e.payload))
+  | failure -> println(json.describe(failure))
+
+println(json.encode(payload) \orCrash("a Json value is written") == json.print(payload))

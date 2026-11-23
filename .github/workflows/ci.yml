@@ -11,21 +11,21 @@ permissions:
 
 jobs:
   test:
-    name: Build and test with the latest compiler
+    name: Build and test with compiler 0.35.0
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       # The compiler's releases are tagged compiler/<version> in nanyx-lang/nanyx, beside the VS Code extension's.
-      - name: Download the latest released compiler
+      # The package is built and its formatting checked with the compiler it is written for.
+      - name: Download the compiler
         env:
           GH_TOKEN: ${{ github.token }}
+          NANYX_VERSION: 0.35.0
         run: |
-          tag=$(gh release list --repo nanyx-lang/nanyx --limit 50 --json tagName \
-            --jq '[.[] | select(.tagName | startswith("compiler/"))][0].tagName')
-          echo "Using $tag"
           mkdir -p "$RUNNER_TEMP/nanyx"
-          gh release download "$tag" --repo nanyx-lang/nanyx --pattern 'nanyx-*-linux-x64.tar.gz' --output "$RUNNER_TEMP/nanyx.tar.gz"
+          gh release download "compiler/$NANYX_VERSION" --repo nanyx-lang/nanyx \
+            --pattern "nanyx-$NANYX_VERSION-linux-x64.tar.gz" --output "$RUNNER_TEMP/nanyx.tar.gz"
           tar -xzf "$RUNNER_TEMP/nanyx.tar.gz" -C "$RUNNER_TEMP/nanyx"
           echo "$RUNNER_TEMP/nanyx" >> "$GITHUB_PATH"
 

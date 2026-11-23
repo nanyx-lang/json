@@ -1,0 +1,32 @@
+-- a set and a list of the same element are told apart, and a map's values are written and read by walking them
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+type Tagged = (ids: list(int), tags: set(int))
+
+println(json.encode(Tagged(ids = [1, 1, 2], tags = set.fromList([3]))) \orCrash("written"))
+
+match json.decode('{"ids": [1, 2], "tags": [3]}', into = type Tagged)
+  | #some(_) -> println("read")
+  | failure -> println(json.describe(failure))
+
+match json.decode('[1, 2]', into = type list(int))
+  | #some(xs) -> println(xs)
+  | failure -> println(json.describe(failure))
+
+type Shape = #circle(float) | #dot
+
+def scores: map(string, list(Shape)) = ["a" => [#circle(1.0)], "b" => [], "c" => [#dot]]
+
+def text = json.encode(scores) \orCrash("written")
+
+println(text)
+
+match json.decode(text, into = type map(string, list(Shape)))
+  | #some(m) -> println(m == scores)
+  | failure -> println(json.describe(failure))
+
+match json.decode('{"a": [], "b": [{"square": 1}]}', into = type map(string, list(Shape)))
+  | #some(_) -> println("read")
+  | failure -> println(json.describe(failure))

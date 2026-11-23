@@ -1,0 +1,23 @@
+{
+  "title": "Plan",
+  "shapes": [
+    {
+      "circle": 1.5
+    },
+    "dot"
+  ],
+  "layers": {
+    "ground": [
+      {
+        "rect": {
+          "width": 2,
+          "height": 3
+        }
+      }
+    ],
+    "roof": []
+  }
+}
+true
+true
+handlers.click: A function can't be written as JSON

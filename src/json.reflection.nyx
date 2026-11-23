@@ -2,10 +2,6 @@
 -- description, with no encoder or decoder written for it.
 @partial export module json
 
--- Two compiler bugs limit the walk for now: a recursive type, as `Json` itself or a tree, isn't
--- walked right (nanyx-lang/nanyx#2378), and a map's values are written through `map.toList`, since
--- `map.map` at a type known only when the program runs breaks the backend (nanyx-lang/nanyx#2379).
-
 -- Writing a value of any type -------------------------------------------------------------------
 
 --| The key a record's field is written under: its name, or the `name` of a `@json(name = ...)`
@@ -69,7 +65,9 @@ def isNone: a, type a -> bool = { value, t ->
 --| Each of `results` that has a value, in order, in front of `acc`, last first, or the first
   failure: what writing the parts of a value gives.
 def allOf
-  : list(#some(b) | #skip | #failed(list(PathStep), string)), list(b) -> #some(list(b)) | #failed(list(PathStep), string)
+  : list(#some(b) | #skip | #failed(list(PathStep), string)),
+    list(b)
+    -> #some(list(b)) | #failed(list(PathStep), string)
   = { results, acc ->
     match results
       | [] -> #some(list.reverse(acc))
@@ -80,7 +78,10 @@ def allOf
 
 --| `written`, with `step` in front of its path when it failed, or the value made of it by `f`.
 def stepped
-  : PathStep, (#some(Json) | #failed(list(PathStep), string)), (Json -> b) -> #some(b) | #failed(list(PathStep), string)
+  : PathStep,
+    (#some(Json) | #failed(list(PathStep), string)),
+    (Json -> b)
+    -> #some(b) | #failed(list(PathStep), string)
   = { step, written, f ->
     match written
       | #some(j) -> #some(f(j))
@@ -94,20 +95,43 @@ def arrayToJson: list(a), type a -> #some(Json) | #failed(list(PathStep), string
     | #failed(path, message) -> #failed(path, message)
 }
 
+--| The values of `written`, each a part of a map read or written, or the first that failed, with
+  its key in front of its path.
+def valuesOf
+  : map(string, (#some(b) | #failed(list(PathStep), string)))
+    -> #some(map(string, b)) | #failed(list(PathStep), string)
+  = { written ->
+    def failures = map.filterMap(
+      written
+      { name, w ->
+        match w
+          | #some(_) -> #skip
+          | #failed(path, message) -> #some([#field(name), ...path], message)
+      }
+    )
+
+    match map.values(failures)
+      | [(path, message), ..._] -> #failed(path, message)
+      | [] -> #some(
+        map.filterMap(
+          written
+          { _, w ->
+            match w
+              | #some(x) -> #some(x)
+              | #failed(_, _) -> #skip
+          }
+        )
+      )
+  }
+
 --| `m`, whose keys are of the type `key` and values of the type `item`, as a `Json` value: an
   object for string keys, and otherwise an array of `[key, value]` pairs.
 def mapToJson
   : map(k, v), type k, type v -> #some(Json) | #failed(list(PathStep), string)
   = { m, key, item ->
     match key
-      | #string -> (match allOf(
-        list.map(
-          map.toList(m)
-          { pair -> stepped(#field(pair.0), toJson(pair.1, item), { j -> (pair.0, j) }) }
-        )
-        []
-      )
-        | #some(members) -> #some(#object(map.fromList(members)))
+      | #string -> (match valuesOf(map.map(m, { x -> toJson(x, item) }))
+        | #some(members) -> #some(#object(members))
         | #failed(path, message) -> #failed(path, message))
       | else -> match allOf(
         list.mapIndexed(
@@ -215,9 +239,6 @@ def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value
     | #function -> #failed([], "A function can't be written as JSON")
 }
 
--- The result is `#some(string) | EncodeError` written out: the compiler gives no `Typed` to a call
--- from another package of a function whose result names a type alias of this one
--- (nanyx-lang/nanyx#2380).
 --| `value` as JSON text, with no encoder written for it, printed compactly as [`print`] prints:
   `json.encode((name = "Ada", age = 36))` is `#some("\{"name":"Ada","age":36}")`. The value is
   written by walking its type. A record is an object of its fields, each under its name, or the
@@ -233,13 +254,22 @@ def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value
   type from the prelude's `Typed`, so not even a nominal type of your own module is shown to it.
   Write one with `json.encodeWith(x, json.encoderFor(type T))`, which sees `T` from where
   `type T` is written, or with an [`Encoder`] of your own.
-export def encode
-  : [Typed(a)] a -> #some(string) | #cannotEncode(path: list(#field(string) | #index(int)), message: string)
-  = { x ->
-    match toJson(x, typeOf)
-      | #some(j) -> #some(print(j))
-      | #failed(path, message) -> #cannotEncode(path = path, message = message)
-  }
+export def encode: [Typed(a)] a -> #some(string) | EncodeError = { x ->
+  match encodeValue(x)
+    | #some(j) -> #some(print(j))
+    | failure -> failure
+}
+
+--| `value` as a [`Json`] value, with no encoder written for it, written by walking its type as
+  [`encode`] writes it: `json.encodeValue((name = "Ada", tags = ["x"]))` is
+  `#some(#object(["name" => #string("Ada"), "tags" => #array([#string("x")])]))`. For a value to
+  put in a larger `Json` value, or to print with [`printPretty`]. A function and a nominal type
+  can't be written: they are an [`EncodeError`], with the path to them.
+export def encodeValue: [Typed(a)] a -> #some(Json) | EncodeError = { x ->
+  match toJson(x, typeOf)
+    | #some(j) -> #some(j)
+    | #failed(path, message) -> #cannotEncode(path = path, message = message)
+}
 
 --| The encoder that writes a value of the type `t` as [`encode`] does: for writing a part of a
   value by its type, within an [`Encoder`] of your own. An encoder can't fail, so a value that
@@ -257,7 +287,9 @@ export def encoderFor: type a -> Encoder(a) = { t ->
 
 --| `read`, with `step` in front of its path when it failed.
 def within
-  : PathStep, (#some(a) | #failed(list(PathStep), string)) -> #some(a) | #failed(list(PathStep), string)
+  : PathStep,
+    (#some(a) | #failed(list(PathStep), string))
+    -> #some(a) | #failed(list(PathStep), string)
   = { step, read ->
     match read
       | #some(x) -> #some(x)
@@ -293,17 +325,6 @@ def arrayOf: Json, type a -> #some(list(a)) | #failed(list(PathStep), string) = 
     | other -> mismatch("an array", other)
 }
 
---| `members` read as values of the type `t`, in front of `acc`, last first.
-def membersOf
-  : list((string, Json)), type a, list((string, a)) -> #some(map(string, a)) | #failed(list(PathStep), string)
-  = { members, t, acc ->
-    match members
-      | [] -> #some(map.fromList(list.reverse(acc)))
-      | [(name, member), ...rest] -> match fromJson(member, t)
-        | #some(x) -> membersOf(rest, t, [(name, x), ...acc])
-        | #failed(path, message) -> #failed([#field(name), ...path], message)
-  }
-
 --| The object `v` read as a map, its values of the type `item`. Only a map whose `key` type is
   `string` can be read.
 def mapOf
@@ -311,7 +332,7 @@ def mapOf
   = { v, key, item ->
     match key
       | #string -> (match v
-        | #object(members) -> membersOf(map.toList(members), item, [])
+        | #object(members) -> valuesOf(map.map(members, { member -> fromJson(member, item) }))
         | other -> mismatch("an object", other))
       | else -> #failed([], "A map can be read from JSON only with string keys")
   }
@@ -435,7 +456,12 @@ def isOptionType: type a -> bool = { t ->
   of an object, under which `payload` is; or `#inline`, by the value itself, as [`Json`]'s tags and
   an option's are.
 def caseOf
-  : list(Case(a)), string, list(string), Json, (#bare | #member | #inline) -> #some(a) | #failed(list(PathStep), string)
+  : list(Case(a)),
+    string,
+    list(string),
+    Json,
+    (#bare | #member | #inline)
+    -> #some(a) | #failed(list(PathStep), string)
   = { cases, name, names, payload, written ->
     match list.find(cases, { c -> c.name == name })
       | #some(c) -> (match fromJson(payload, c.type)

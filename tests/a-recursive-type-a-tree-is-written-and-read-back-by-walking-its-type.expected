@@ -1,0 +1,5 @@
+{"node":{"left":{"leaf":1},"right":{"node":{"left":{"leaf":2},"right":{"leaf":3}}}}}
+{"rose":{"label":"a","children":[{"rose":{"label":"b","children":[]}},{"rose":{"label":"c","children":[{"rose":{"label":"d","children":[]}}]}}]}}
+true
+true
+node.right.node.left.leaf: Expected a whole number, found a string
