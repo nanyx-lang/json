@@ -1,0 +1,15 @@
+age: Expected a whole number, found 2.5
+age: Expected a member 'age', found none
+shapes[1]: Expected one of the tags 'circle', 'rect' or 'dot', found 'hexagon'
+shapes[0]: Expected the tag 'circle' with its value, as an object with the one member 'circle', found a string
+shapes[0]: Expected one of the tags 'circle', 'rect' or 'dot', as a string or an object of one member, found an object
+nickname: Expected a string, found a number
+Expected an array of 2 elements, found 3
+[1]: Expected a boolean, found a number
+[1]: Expected a whole number from 0 to 255, found 300
+Expected ',' or ']' after an element of an array, found the end of the text, at line 1, column 6
+a: Expected a string, found a number
+A function can't be read from JSON
+cash[0]: Money of json-decode-says-where-a-value-doesn-t-fit-the-type-it-is-read-into-an can't be written as JSON: a nominal type shows its structure only to its own module
+run: A function can't be written as JSON
+{"cents":5}

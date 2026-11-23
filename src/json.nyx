@@ -2,7 +2,12 @@
 
   [`parse`] reads text into a `Json`, or says where it stops being JSON and why, as a
   [`JsonError`]. [`print`] writes a value compactly, and [`printPretty`] writes it with each
-  element and member on a line of its own. Nothing here needs a context. A program names
+  element and member on a line of its own.
+
+  [`encode`] writes a value of any type as JSON text, and [`decode`] reads one back, by walking
+  the type, with no encoder or decoder written for it: `json.decode(text, into = type User)`. To
+  write or read a type another way, build an [`Encoder`] or a [`Decoder`] from smaller ones, and
+  run it with [`encodeWith`] or [`decodeWith`]. A program names
   `nanyx.json` in its manifest's `dependencies`, or a script in a `::dependency` line, and imports
   it as `import nanyx.json/json as json`, to call `json.parse(text)` as the docs do.
 
@@ -35,15 +40,10 @@ export type Json =
   | #array(list(Json))
   | #object(map(string, Json))
 
---| Why [`parse`] read no value: where the text stops being JSON, and what it found there.
-  `position` is the byte the problem is at, counting from 0, and `line` and `column` say where
-  that byte is, each counting from 1, with `column` counting characters.
-export type JsonError = (
-  position: int
-  line: int
-  column: int
-  message: string
-)
+--| Why [`parse`] read no value: `#invalidJson`, with where the text stops being JSON and what it
+  found there. `position` is the byte the problem is at, counting from 0, and `line` and `column`
+  say where that byte is, each counting from 1, with `column` counting characters.
+export type JsonError = #invalidJson(position: int, line: int, column: int, message: string)
 
 -- Reading ---------------------------------------------------------------------------------------
 --
@@ -398,25 +398,23 @@ def afterMember: StringSlice, int, list((string, Json)) -> Parsed = { text, i, m
       else #failed(i, "Expected ',' or '\}' after a member of an object, found {found(text, i)}")
 }
 
---| The JSON value `text` writes, or a [`JsonError`] that says where it stops being JSON and why.
+--| The JSON value `text` writes, or an `#invalidJson` that says where it stops being JSON and why.
   The text is one value, with any whitespace before and after it: `json.parse('[1, "two", null]')`
   is `#some(#array([#number(1.0), #string("two"), #null]))`, and `json.parse("[1, 2")` is an error
   at the end of the text.
-export def parse: string -> #some(Json) | #error(JsonError) = { s ->
+export def parse: string -> #some(Json) | JsonError = { s ->
   def text = string.slice(s, 0, string.length(s))
 
   match parseValue(text, 0)
     | #parsed(value, after) -> endOfText(text, skipWhitespace(text, after), value)
-    | #failed(at, message) -> #error(errorAt(text, at, message))
+    | #failed(at, message) -> errorAt(text, at, message)
 }
 
 --| `value`, if byte `i` is the end of `text`.
-def endOfText: StringSlice, int, Json -> #some(Json) | #error(JsonError) = { text, i, value ->
+def endOfText: StringSlice, int, Json -> #some(Json) | JsonError = { text, i, value ->
   if i >= StringSlice.length(text)
     then #some(value)
-    else #error(
-      errorAt(text, i, "Expected the end of the text after the value, found {found(text, i)}")
-    )
+    else errorAt(text, i, "Expected the end of the text after the value, found {found(text, i)}")
 }
 
 --| The error `message` at byte `at` of `text`.
@@ -431,7 +429,7 @@ def locate
     def b = byteAt(text, i)
 
     if i >= at or b < 0
-      then JsonError(position = at, line = line, column = column, message = message)
+      then #invalidJson(position = at, line = line, column = column, message = message)
       else if b == 10
         then locate(text, i + 1, at, line + 1, 1, message)
         else if b >= 128 and b < 192

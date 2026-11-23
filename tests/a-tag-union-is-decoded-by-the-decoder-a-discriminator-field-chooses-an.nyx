@@ -23,9 +23,9 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
 type Shape = #circle(float) | #rect(float, float)
@@ -62,7 +62,7 @@ def shapeEncoder: json.Encoder(Shape) = {
 }
 
 show(
-  json.decode(
+  json.decodeWith(
     '[{"kind": "circle", "radius": 1.5}, {"kind": "rect", "width": 2, "height": 3}]'
     json.list(shape)
   )
@@ -70,8 +70,8 @@ show(
 )
 
 show(
-  json.decode('[{"kind": "circle", "radius": 1}, {"kind": "hexagon"}]', json.list(shape))
+  json.decodeWith('[{"kind": "circle", "radius": 1}, {"kind": "hexagon"}]', json.list(shape))
   encode.list(shapeEncoder)
 )
 
-show(json.decode('[{"kind": "rect", "width": 2}]', json.list(shape)), encode.list(shapeEncoder))
+show(json.decodeWith('[{"kind": "rect", "width": 2}]', json.list(shape)), encode.list(shapeEncoder))

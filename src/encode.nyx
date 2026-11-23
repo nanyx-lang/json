@@ -4,7 +4,9 @@
   function is one. The encoders here write one kind of value each ([`string`], [`int`],
   [`float`], [`bool`]), and the rest build larger ones from smaller: [`list`], [`dict`],
   [`optional`], and [`object`], which writes a record a member at a time, each a [`field`] or an
-  [`optionalField`]. `json.encode` writes a value as JSON text by an encoder.
+  [`optionalField`]. `json.encodeWith` writes a value as JSON text by an encoder. An encoder is
+  only needed to write a value differently from `json.encode`, which writes any value by walking
+  its type, and `json.encoderFor(type T)` is that walk as an encoder, for a part of a value.
 
   ```nanyx fragment
   type User = (name: string, age: int)
@@ -16,7 +18,7 @@
     ]
   )
 
-  json.encode(User(name = "Ada", age = 36), user)
+  json.encodeWith(User(name = "Ada", age = 36), user)
   ```
 
   The encoders are in a module of their own, `nanyx.json/encode`, imported `as encode`, since their

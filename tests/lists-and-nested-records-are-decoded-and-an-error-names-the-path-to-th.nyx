@@ -23,9 +23,9 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
 type Team = (name: string, users: list(User))
@@ -44,7 +44,7 @@ def teamEncoder: json.Encoder(Team) = encode.object(
 )
 
 show(
-  json.decode(
+  json.decodeWith(
     '{"name": "core", "users": [{"name": "Ada", "age": 36}, {"name": "Bob", "age": 25}]}'
     team
   )
@@ -52,7 +52,7 @@ show(
 )
 
 show(
-  json.decode(
+  json.decodeWith(
     '{"name": "core", "users": [{"name": "Ada", "age": 36}, {"name": "Bob", "age": 2}, {"name": "Cy", "age": 2.5}]}'
     team
   )
@@ -60,13 +60,13 @@ show(
 )
 
 show(
-  json.decode('{"name": "core", "users": [{"name": "Ada", "age": 36}, {"age": 2}]}', team)
+  json.decodeWith('{"name": "core", "users": [{"name": "Ada", "age": 36}, {"age": 2}]}', team)
   teamEncoder
 )
 
-show(json.decode('{"name": "core", "users": {}}', team), teamEncoder)
+show(json.decodeWith('{"name": "core", "users": {}}', team), teamEncoder)
 
 show(
-  json.decode('[[1, 2], [3, "4"]]', json.list(json.list(json.int)))
+  json.decodeWith('[[1, 2], [3, "4"]]', json.list(json.list(json.int)))
   encode.list(encode.list(encode.int))
 )

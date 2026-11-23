@@ -23,10 +23,10 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
-show(json.decode('{"name": "Ada", "age": 36, "nickname": "Countess"}', user), userEncoder)
-show(json.decode('{"age": 25, "name": "Bob"}', user), userEncoder)
+show(json.decodeWith('{"name": "Ada", "age": 36, "nickname": "Countess"}', user), userEncoder)
+show(json.decodeWith('{"age": 25, "name": "Bob"}', user), userEncoder)

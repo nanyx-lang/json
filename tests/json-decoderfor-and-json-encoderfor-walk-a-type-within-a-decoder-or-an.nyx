@@ -1,0 +1,46 @@
+-- json.decoderFor and json.encoderFor walk a type within a decoder or an encoder of your own
+::dependency nanyx.json ./nanyx.json
+
+import (
+  nanyx.json/encode as encode
+  nanyx.json/json as json
+)
+
+type Point = (x: int, y: int)
+
+type Money = protected (cents: int)
+
+-- Money is written as a number of cents, not as an object
+def money: json.Decoder(Money) = json.convert(json.int, { cents -> Money(cents = cents) })
+
+def moneyEncoder: json.Encoder(Money) = { m ->
+  encode.int(m.cents)
+}
+
+type Item = (at: Point, price: Money)
+
+def item: json.Decoder(Item) = json.record {
+  def at = try json.field("at", json.decoderFor(type Point))
+  def price = try json.field("price", money)
+  return Item(at = at, price = price)
+}
+
+def itemEncoder: json.Encoder(Item) = encode.object(
+  [
+    encode.field("at", { i -> i.at }, json.encoderFor(type Point))
+    encode.field("price", { i -> i.price }, moneyEncoder)
+  ]
+)
+
+match json.decodeWith('[{"at": {"x": 1, "y": 2}, "price": 250}]', json.list(item))
+  | #some(items) -> println(json.encodeWith(items, encode.list(itemEncoder)))
+  | failure -> println(json.describe(failure))
+
+match json.decodeWith('[{"at": {"x": 1}, "price": 250}]', json.list(item))
+  | #some(items) -> println(json.encodeWith(items, encode.list(itemEncoder)))
+  | failure -> println(json.describe(failure))
+
+-- a member whose type is an option may be missing
+match json.decodeWith("\{}", json.field("nickname", json.decoderFor(type (#some(string) | #none))))
+  | #some(nickname) -> println(nickname)
+  | failure -> println(json.describe(failure))

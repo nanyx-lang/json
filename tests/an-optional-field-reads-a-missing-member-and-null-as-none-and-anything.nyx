@@ -23,15 +23,15 @@ def userEncoder: json.Encoder(User) = encode.object(
   ]
 )
 
-def show: [Console] (#some(a) | #error(json.DecodeError)), json.Encoder(a) -> () = {
-  | #some(x), encoder -> println(json.encode(x, encoder))
-  | #error(e), _ -> println(json.describe(e))
+def show: [Console] (#some(a) | json.DecodeError | json.JsonError), json.Encoder(a) -> () = {
+  | #some(x), encoder -> println(json.encodeWith(x, encoder))
+  | failure, _ -> println(json.describe(failure))
 }
 
 def nickname = json.field("nickname", json.optional(json.string))
 def written = encode.optional(encode.string)
 
-show(json.decode("\{}", nickname), written)
-show(json.decode('{"nickname": null}', nickname), written)
-show(json.decode('{"nickname": "Bo"}', nickname), written)
-show(json.decode('{"nickname": 3}', nickname), written)
+show(json.decodeWith("\{}", nickname), written)
+show(json.decodeWith('{"nickname": null}', nickname), written)
+show(json.decodeWith('{"nickname": "Bo"}', nickname), written)
+show(json.decodeWith('{"nickname": 3}', nickname), written)

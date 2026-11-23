@@ -1,0 +1,17 @@
+-- a list of 100 000 records is decoded and encoded by walking its type in constant stack
+::dependency nanyx.json ./nanyx.json
+
+import nanyx.json/json as json
+
+type User = (name: string, age: int, nickname: #some(string) | #none)
+
+def items = list.init(
+  100000
+  { i -> '{"name": "u' ++ int.toString(i) ++ '", "age": ' ++ int.toString(i % 90) ++ '}' }
+)
+
+match json.decode("[" ++ string.join(items, ",") ++ "]", into = type list(User))
+  | #some(users) ->
+    println(list.length(users))
+    println(string.length(json.encode(users) \orCrash("written")))
+  | failure -> println(json.describe(failure))
