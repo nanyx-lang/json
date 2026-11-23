@@ -1,4 +1,4 @@
-From b1df727113cf822e891e7caab82a68c79700ca6d Mon Sep 17 00:00:00 2001
+From 08ee67c3d22389e3997ce6a2f045b90d9eef6f87 Mon Sep 17 00:00:00 2001
 From: Richard Gibson <richard@gibson.cx>
 Date: Mon, 23 Nov 2026 14:20:01 +0000
 Subject: [PATCH] Docs for nanyx.json 0.3.0: recursive types and
@@ -19,11 +19,11 @@ release, and the encode page's pin test names it.
  .../Nanyx.Compiler.Wasm.Tests/TestHelpers.fs  |   4 +-
  docs/src/content/cookbook/json-parsing.md     |  12 +--
  docs/src/content/stdlib/encode.md             |   6 +-
- docs/src/content/stdlib/json-reflection.md    |  93 ++++++++++++++++--
+ docs/src/content/stdlib/json-reflection.md    |  77 ++++++++++++++++--
  docs/src/content/stdlib/json-typed.md         |   8 +-
- docs/src/content/stdlib/json.md               |  14 +--
+ docs/src/content/stdlib/json.md               |  14 ++--
  docs/src/content/stdlib/standard-library.md   |   2 +-
- 9 files changed, 111 insertions(+), 34 deletions(-)
+ 9 files changed, 95 insertions(+), 34 deletions(-)
  create mode 100644 compiler/Nanyx.Compiler.Wasm.Tests/Packages/nanyx.json-0.3.0.nyxpkg
 
 diff --git a/compiler/Nanyx.Compiler.Wasm.Tests/Features/Docs/StandardLibraryReferenceTests.fs b/compiler/Nanyx.Compiler.Wasm.Tests/Features/Docs/StandardLibraryReferenceTests.fs
@@ -518,7 +518,7 @@ index fcee15b..3c33ecd 100644
  Encoders: a value of a type of your own written as JSON, the other way from `json`'s decoders.
  
 diff --git a/docs/src/content/stdlib/json-reflection.md b/docs/src/content/stdlib/json-reflection.md
-index 9a37a1b..f72bcad 100644
+index 9a37a1b..89f4f27 100644
 --- a/docs/src/content/stdlib/json-reflection.md
 +++ b/docs/src/content/stdlib/json-reflection.md
 @@ -2,7 +2,7 @@
@@ -548,7 +548,7 @@ index 9a37a1b..f72bcad 100644
  
  import nanyx.json/json as json
  
-@@ -83,14 +83,63 @@ To write or read a type another way, as nested differently or with a tag in a me
+@@ -83,14 +83,47 @@ To write or read a type another way, as nested differently or with a tag in a me
  [decoder](json-typed) or an [encoder](encode) for it. `json.decoderFor(type T)` and `json.encoderFor(type T)` are the walk
  as a decoder and an encoder, for the parts of it that are written as `encode` writes them.
  
@@ -558,7 +558,7 @@ index 9a37a1b..f72bcad 100644
 -`json.encodeWith(x, json.encoderFor(type T))` can; and a set can't be read.
 +A recursive type is walked as any other, so a tree is a tag inside a tag, and a field of type `json.Json` is written and
 +read as itself. `json.encodeValue` writes a value as a `Json` value rather than text, to put in a larger one or to print
-+with `json.printPretty`:
++with `json.printPretty` instead:
 +
 +```nanyx
 +::dependency nanyx.json 0.3.0
@@ -576,7 +576,7 @@ index 9a37a1b..f72bcad 100644
 +)
 +
 +match json.encodeValue(event)
-+  | #some(j) -> println(json.printPretty(j, indent = 2))
++  | #some(j) -> println(json.print(j))
 +  | failure -> println(json.describe(failure))
 +
 +match json.decode(
@@ -586,23 +586,7 @@ index 9a37a1b..f72bcad 100644
 +  | #some(read) -> println("{read.kind}: {json.print(read.payload)}")
 +  | failure -> println(json.describe(failure))
 +
-+-- {
-+--   "kind": "grown",
-+--   "tree": {
-+--     "node": {
-+--       "left": {
-+--         "leaf": 1
-+--       },
-+--       "right": {
-+--         "leaf": 2
-+--       }
-+--     }
-+--   },
-+--   "payload": [
-+--     true,
-+--     null
-+--   ]
-+-- }
++-- {"kind":"grown","tree":{"node":{"left":{"leaf":1},"right":{"leaf":2}}},"payload":[true,null]}
 +-- cut: {"by":"Ada"}
 +```
 +
@@ -617,7 +601,7 @@ index 9a37a1b..f72bcad 100644
  
  ## `encode`
  
-@@ -98,6 +147,34 @@ module that calls it ([#2382](https://github.com/nanyx-lang/nanyx/issues/2382)),
+@@ -98,6 +131,34 @@ module that calls it ([#2382](https://github.com/nanyx-lang/nanyx/issues/2382)),
  def encode: [Typed(a)] a -> #some(string) | #cannotEncode(path: list(PathStep), message: string)
  ```
  
