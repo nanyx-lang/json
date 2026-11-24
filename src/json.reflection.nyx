@@ -237,6 +237,11 @@ def toJson: a, Type(a) -> #some(Json) | #failed(list(PathStep), string) = { valu
       "{n.name} of {n.module} can't be written as JSON: a nominal type shows its structure only to its own module"
     )
     | #function -> #failed([], "A function can't be written as JSON")
+    -- A kind of type this version doesn't know: the compiler may describe more kinds than it did.
+    | else -> #failed(
+      []
+      "A value of this type can't be written as JSON by this version of nanyx.json"
+    )
 }
 
 --| `value` as JSON text, with no encoder written for it, printed compactly as [`print`] prints:
@@ -441,6 +446,11 @@ def fromJson: Json, Type(a) -> #some(a) | #failed(list(PathStep), string) = { v,
       "{n.name} of {n.module} can't be read from JSON: a nominal type shows its structure only to its own module"
     )
     | #function -> #failed([], "A function can't be read from JSON")
+    -- A kind of type this version doesn't know: the compiler may describe more kinds than it did.
+    | else -> #failed(
+      []
+      "A value of this type can't be read from JSON by this version of nanyx.json"
+    )
 }
 
 --| Whether `t` is an option's type, `#some(x) | #none`.
