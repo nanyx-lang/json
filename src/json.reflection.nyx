@@ -46,7 +46,7 @@ def isJson: string, string -> bool = { name, module ->
 }
 
 --| Whether `value`, of the type `t`, is the `#none` of an option.
-def isNone: a, type a -> bool = { value, t ->
+def isNone: a, Type(a) -> bool = { value, t ->
   match t
     | #union(u) ->
       if not isOption(list.map(u.cases, { c -> c.name }))
@@ -89,7 +89,7 @@ def stepped
   }
 
 --| `items`, of the type `t`, each written as JSON, as an array.
-def arrayToJson: list(a), type a -> #some(Json) | #failed(list(PathStep), string) = { items, t ->
+def arrayToJson: list(a), Type(a) -> #some(Json) | #failed(list(PathStep), string) = { items, t ->
   match allOf(list.mapIndexed(items, { i, x -> stepped(#index(i), toJson(x, t), { j -> j }) }), [])
     | #some(js) -> #some(#array(js))
     | #failed(path, message) -> #failed(path, message)
@@ -127,7 +127,7 @@ def valuesOf
 --| `m`, whose keys are of the type `key` and values of the type `item`, as a `Json` value: an
   object for string keys, and otherwise an array of `[key, value]` pairs.
 def mapToJson
-  : map(k, v), type k, type v -> #some(Json) | #failed(list(PathStep), string)
+  : map(k, v), Type(k), Type(v) -> #some(Json) | #failed(list(PathStep), string)
   = { m, key, item ->
     match key
       | #string -> (match valuesOf(map.map(m, { x -> toJson(x, item) }))
@@ -160,7 +160,7 @@ def payloadJson: string, Json -> Json = { name, payload ->
 
 --| `value`, of the type `t`, as a `Json` value, or the path to a part that can't be written, and
   why: what [`encode`] writes.
-def toJson: a, type a -> #some(Json) | #failed(list(PathStep), string) = { value, t ->
+def toJson: a, Type(a) -> #some(Json) | #failed(list(PathStep), string) = { value, t ->
   match t
     | #int -> #some(#number(int.toFloat(value)))
     | #float -> #some(#number(value))
@@ -275,7 +275,7 @@ export def encodeValue: [Typed(a)] a -> #some(Json) | EncodeError = { x ->
   value by its type, within an [`Encoder`] of your own. An encoder can't fail, so a value that
   `encode` gives an [`EncodeError`] for, a function or a nominal type `t` doesn't show the
   structure of, crashes it.
-export def encoderFor: type a -> Encoder(a) = { t ->
+export def encoderFor: Type(a) -> Encoder(a) = { t ->
   { x ->
     match toJson(x, t)
       | #some(j) -> j
@@ -309,7 +309,7 @@ def sizedOf
 
 --| `items` read as values of the type `t`, from `index` on, in front of `acc`, last first.
 def itemsOf
-  : list(Json), type a, int, list(a) -> #some(list(a)) | #failed(list(PathStep), string)
+  : list(Json), Type(a), int, list(a) -> #some(list(a)) | #failed(list(PathStep), string)
   = { items, t, index, acc ->
     match items
       | [] -> #some(list.reverse(acc))
@@ -319,7 +319,7 @@ def itemsOf
   }
 
 --| The elements of the array `v`, read as values of the type `t`.
-def arrayOf: Json, type a -> #some(list(a)) | #failed(list(PathStep), string) = { v, t ->
+def arrayOf: Json, Type(a) -> #some(list(a)) | #failed(list(PathStep), string) = { v, t ->
   match v
     | #array(items) -> itemsOf(items, t, 0, [])
     | other -> mismatch("an array", other)
@@ -328,7 +328,7 @@ def arrayOf: Json, type a -> #some(list(a)) | #failed(list(PathStep), string) = 
 --| The object `v` read as a map, its values of the type `item`. Only a map whose `key` type is
   `string` can be read.
 def mapOf
-  : Json, type k, type v -> #some(map(k, v)) | #failed(list(PathStep), string)
+  : Json, Type(k), Type(v) -> #some(map(k, v)) | #failed(list(PathStep), string)
   = { v, key, item ->
     match key
       | #string -> (match v
@@ -359,7 +359,7 @@ def tagOf: Json -> string = {
 
 --| A value of the type `t` read from `v`, or the path to what didn't fit, from `v`, and why: what
   [`decoderFor`] reads.
-def fromJson: Json, type a -> #some(a) | #failed(list(PathStep), string) = { v, t ->
+def fromJson: Json, Type(a) -> #some(a) | #failed(list(PathStep), string) = { v, t ->
   match t
     | #int -> intOf(v)
     | #float -> floatOf(v)
@@ -444,7 +444,7 @@ def fromJson: Json, type a -> #some(a) | #failed(list(PathStep), string) = { v, 
 }
 
 --| Whether `t` is an option's type, `#some(x) | #none`.
-def isOptionType: type a -> bool = { t ->
+def isOptionType: Type(a) -> bool = { t ->
   match t
     | #union(u) -> isOption(list.map(u.cases, { c -> c.name }))
     | else -> false
@@ -481,7 +481,7 @@ def caseOf
 --| The decoder that reads a value of the type `t` by walking it, as [`decode`] does: for reading a
   part of a value by its type, within a [`Decoder`] of your own. A member that is missing reads as
   `#none` when `t` is an option's type, and is an error otherwise.
-export def decoderFor: type a -> Decoder(a) = { t ->
+export def decoderFor: Type(a) -> Decoder(a) = { t ->
   def absent =
     if isOptionType(t)
       then (match fromJson(#null, t)
@@ -492,14 +492,14 @@ export def decoderFor: type a -> Decoder(a) = { t ->
   Decoder(run = { v -> fromJson(v, t) }, absent = absent)
 }
 
---| A value of the type `into` read from `value` by walking the type, as [`decode`] reads one, or a
+--| A value of the type given first, read from the `Json` value by walking the type, as [`decode`] reads one, or a
   [`DecodeError`] with the path to what didn't fit, and why.
-export def decodeValue: (Json, into: type) -> #some(into) | DecodeError = { v, into ->
-  decodeValueWith(v, decoderFor(into))
+export def decodeValue: Type(a), Json -> #some(a) | DecodeError = { t, v ->
+  decodeValueWith(v, decoderFor(t))
 }
 
---| A value of the type `into` read from the JSON `text`, with no decoder written for it:
-  `json.decode(text, into = type User)`. The type is walked as [`encode`] walks it, so what
+--| A value of the type given first, read from the JSON text, with no decoder written for it:
+  `json.decode(type User, text)`. The type is walked as [`encode`] walks it, so what
   `encode` writes, `decode` reads back. A missing member is an error, but for a field whose type is
   an option, which reads a missing member and `null` as `#none`. A number read as an `int` must be
   whole, and one read as a sized number must be in its range.
@@ -507,6 +507,6 @@ export def decodeValue: (Json, into: type) -> #some(into) | DecodeError = { v, i
   Text that isn't JSON is an `#invalidJson`, and a value that doesn't fit a [`DecodeError`], with
   the path to it. A set, a map with keys other than strings, a function, and a nominal type of
   another module can't be read; read one with a [`Decoder`] of your own instead.
-export def decode: (string, into: type) -> #some(into) | DecodeError | JsonError = { text, into ->
-  decodeWith(text, decoderFor(into))
+export def decode: Type(a), string -> #some(a) | DecodeError | JsonError = { t, text ->
+  decodeWith(text, decoderFor(t))
 }

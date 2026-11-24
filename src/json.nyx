@@ -5,7 +5,7 @@
   element and member on a line of its own.
 
   [`encode`] writes a value of any type as JSON text, and [`decode`] reads one back, by walking
-  the type, with no encoder or decoder written for it: `json.decode(text, into = type User)`. To
+  the type, with no encoder or decoder written for it: `json.decode(type User, text)`. To
   write or read a type another way, build an [`Encoder`] or a [`Decoder`] from smaller ones, and
   run it with [`encodeWith`] or [`decodeWith`]. A program names
   `nanyx.json` in its manifest's `dependencies`, or a script in a `::dependency` line, and imports

@@ -35,7 +35,7 @@ def main = {
     | failure -> println(json.describe(failure))
   -- {"name":"Ada","born":1815,"shapes":[{"circle":1.5}]}
 
-  match json.decode('{"name": "Bob", "born": "1990", "shapes": []}', into = type User)
+  match json.decode(type User, '{"name": "Bob", "born": "1990", "shapes": []}')
     | #some(user) -> println(user.name)
     | failure -> println(json.describe(failure))
   -- born: Expected a whole number, found a string
@@ -80,6 +80,6 @@ tests/run.sh                 # with nanyx on the PATH
 NANYX=path/to/nanyx tests/run.sh
 ```
 
-CI builds and tests the package with the compiler release its workflow names, 0.35.0. To release, set the manifest's
+CI builds and tests the package with the compiler release its workflow names, 0.38.0. To release, set the manifest's
 `version` (or run `nanyx bump`) and run `nanyx publish`, which creates the GitHub release with the `.nyxpkg` and
 registers the version with the [package index](https://github.com/nanyx-lang/packages).

@@ -7,11 +7,11 @@ type Tagged = (ids: list(int), tags: set(int))
 
 println(json.encode(Tagged(ids = [1, 1, 2], tags = set.fromList([3]))) \orCrash("written"))
 
-match json.decode('{"ids": [1, 2], "tags": [3]}', into = type Tagged)
+match json.decode(type Tagged, '{"ids": [1, 2], "tags": [3]}')
   | #some(_) -> println("read")
   | failure -> println(json.describe(failure))
 
-match json.decode('[1, 2]', into = type list(int))
+match json.decode(type list(int), '[1, 2]')
   | #some(xs) -> println(xs)
   | failure -> println(json.describe(failure))
 
@@ -23,10 +23,10 @@ def text = json.encode(scores) \orCrash("written")
 
 println(text)
 
-match json.decode(text, into = type map(string, list(Shape)))
+match json.decode(type map(string, list(Shape)), text)
   | #some(m) -> println(m == scores)
   | failure -> println(json.describe(failure))
 
-match json.decode('{"a": [], "b": [{"square": 1}]}', into = type map(string, list(Shape)))
+match json.decode(type map(string, list(Shape)), '{"a": [], "b": [{"square": 1}]}')
   | #some(_) -> println("read")
   | failure -> println(json.describe(failure))

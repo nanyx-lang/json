@@ -28,19 +28,19 @@ def text = json.encode(ada) \orCrash("a User is written")
 
 println(text)
 
-match json.decode(text, into = type User)
+match json.decode(type User, text)
   | #some(user) -> println(user == ada)
   | failure -> println(json.describe(failure))
 
 def bob = '{"name": "Bob", "age": 25, "e_mail": "bob@example.com", "nickname": "Bobby", "shapes": [], "position": [0, false]}'
 
-match json.decode(bob, into = type User)
+match json.decode(type User, bob)
   | #some(user) -> println(json.encode(user) \orCrash("written"))
   | failure -> println(json.describe(failure))
 
 match json.decode(
+  type User
   '{"name": "Cy", "age": 3, "e_mail": "", "nickname": null, "shapes": ["dot"], "position": [1, true]}'
-  into = type User
 )
   | #some(user) -> println(user.nickname)
   | failure -> println(json.describe(failure))

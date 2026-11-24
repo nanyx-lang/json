@@ -23,17 +23,17 @@ def roseText = json.encode(rose) \orCrash("a Rose is written")
 println(treeText)
 println(roseText)
 
-match json.decode(treeText, into = type Tree)
+match json.decode(type Tree, treeText)
   | #some(t) -> println(t == tree)
   | failure -> println(json.describe(failure))
 
-match json.decode(roseText, into = type Rose)
+match json.decode(type Rose, roseText)
   | #some(r) -> println(r == rose)
   | failure -> println(json.describe(failure))
 
 match json.decode(
+  type Tree
   '{"node": {"left": {"leaf": 1}, "right": {"node": {"left": {"leaf": "2"}, "right": {"leaf": 3}}}}}'
-  into = type Tree
 )
   | #some(_) -> println("read")
   | failure -> println(json.describe(failure))
