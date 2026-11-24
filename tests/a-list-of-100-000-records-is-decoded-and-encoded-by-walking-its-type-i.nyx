@@ -10,7 +10,7 @@ def items = list.init(
   { i -> '{"name": "u' ++ int.toString(i) ++ '", "age": ' ++ int.toString(i % 90) ++ '}' }
 )
 
-match json.decode("[" ++ string.join(items, ",") ++ "]", into = type list(User))
+match json.decode(type list(User), "[" ++ string.join(items, ",") ++ "]")
   | #some(users) ->
     println(list.length(users))
     println(string.length(json.encode(users) \orCrash("written")))

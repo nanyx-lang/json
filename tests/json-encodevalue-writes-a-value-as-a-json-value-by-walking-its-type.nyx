@@ -24,7 +24,7 @@ match json.encodeValue(drawing)
   | failure -> println(json.describe(failure))
 
 match json.encodeValue(drawing)
-  | #some(j) -> (match json.decodeValue(j, into = type Drawing)
+  | #some(j) -> (match json.decodeValue(type Drawing, j)
     | #some(d) -> println(d == drawing)
     | failure -> println(json.describe(failure)))
   | failure -> println(json.describe(failure))

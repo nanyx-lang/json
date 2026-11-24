@@ -13,11 +13,11 @@ def text = json.encode(event) \orCrash("an Event is written")
 
 println(text)
 
-match json.decode(text, into = type Event)
+match json.decode(type Event, text)
   | #some(e) -> println(json.print(e.payload) == json.print(payload))
   | failure -> println(json.describe(failure))
 
-match json.decode('{"kind": "deleted", "payload": [1, "two", {"three": 3.5}]}', into = type Event)
+match json.decode(type Event, '{"kind": "deleted", "payload": [1, "two", {"three": 3.5}]}')
   | #some(e) -> println(json.print(e.payload))
   | failure -> println(json.describe(failure))
 
