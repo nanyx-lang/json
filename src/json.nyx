@@ -478,7 +478,9 @@ def escapeFor: int -> string = { b ->
             then "\\t"
             else if b == 8
               then "\\b"
-              else if b == 12 then "\\f" else "\\u00" ++ hexDigit(b / 16) ++ hexDigit(b % 16)
+              else if b == 12
+                then "\\f"
+                else "\\u00" ++ hexDigit(int.shiftRight(b, 4)) ++ hexDigit(b % 16)
 }
 
 --| The pieces of `text` from byte `i` on, escaped, in front of `acc`. `start` is where the run of
