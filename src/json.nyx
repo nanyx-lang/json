@@ -11,10 +11,11 @@
   `nanyx.json` in its manifest's `dependencies`, or a script in a `::dependency` line, and imports
   it as `import nanyx.json/json as json`, to call `json.parse(text)` as the docs do.
 
-  An object is a `map(string, Json)`, and a map keeps its keys in the order they were first added:
-  `parse` adds them in the order the text writes them, and `print` writes them in the map's order,
-  so a document read and written again keeps its keys where they were. A key written twice holds
-  the value written last, in the place it was first written.
+  An object is a `map(string, Json)`, so `print` and `encode` write its keys, and a record's
+  fields, in the order the map gives them. With a compiler whose maps keep their keys in the order
+  they were added, that is the order the text or the record writes them; once maps give their keys
+  in the order of their hashes, it is unspecified. A key written twice holds the value written
+  last.
 
   Text is UTF-8, as strings are, and a string's escapes are read as JSON writes them: `\"`, `\\`,
   `\/`, `\b`, `\f`, `\n`, `\r`, `\t` and `\uXXXX`, with a character past U+FFFF written as two
