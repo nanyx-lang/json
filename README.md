@@ -87,5 +87,6 @@ NANYX=path/to/nanyx tests/run.sh
 ```
 
 CI builds and tests the package with the compiler release its workflow names, 0.44.0. To release, set the manifest's
-`version` (or run `nanyx bump`) and run `nanyx publish`, which creates the GitHub release with the `.nyxpkg` and
-registers the version with the [package index](https://github.com/nanyx-lang/packages).
+`version` (or run `nanyx bump`) in a pull request. When it merges, CI's `publish` job runs `nanyx publish`, which
+creates the GitHub release `v<version>` with the `.nyxpkg`, and the [package index](https://github.com/nanyx-lang/packages)
+records it. A merge whose version is already released publishes nothing.
