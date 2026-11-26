@@ -1,5 +1,5 @@
 -- succeed, fail and andThen build decoders from others
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

@@ -45,6 +45,34 @@ def isJson: string, string -> bool = { name, module ->
   module == jsonModule and (name == "Json" or string.endsWith(name, ".Json"))
 }
 
+--| `v`, a [`Json`] value, with an object written as the list of its members is, an array of
+  `[key, value]` pairs, as walking `Json`'s own type reads its `#object`'s payload; any other value
+  as it is.
+def objectAsPairs: Json -> Json = {
+  | #object(members) -> #array(pairsOf(members))
+  | other -> other
+}
+
+--| `members` each as an array of its key and its value.
+def pairsOf: list((string, Json)) -> list(Json) = {
+  | [] -> []
+  | [(key, value), ...rest] -> [#array([#string(key), value]), ...pairsOf(rest)]
+}
+
+--| `pairs`, an object's members written as walking `Json`'s own type writes them, an array of
+  `[key, value]` pairs, as the object they are.
+def pairsAsObject: Json -> Json = {
+  | #array(pairs) -> #object(membersOf(pairs))
+  | other -> other
+}
+
+--| The members `pairs` write, each an array of a key and a value.
+def membersOf: list(Json) -> list((string, Json)) = {
+  | [] -> []
+  | [#array([#string(key), value]), ...rest] -> [(key, value), ...membersOf(rest)]
+  | [_, ...rest] -> membersOf(rest)
+}
+
 --| Whether `value`, of the type `t`, is the `#none` of an option.
 def isNone: a, Type(a) -> bool = { value, t ->
   match t
@@ -131,7 +159,7 @@ def mapToJson
   = { m, key, item ->
     match key
       | #string -> (match valuesOf(map.map(m, { x -> toJson(x, item) }))
-        | #some(members) -> #some(#object(members))
+        | #some(members) -> #some(#object(map.toList(members)))
         | #failed(path, message) -> #failed(path, message))
       | else -> match allOf(
         list.mapIndexed(
@@ -155,7 +183,7 @@ def tagJson: string -> Json = { name ->
 
 --| The tag `name` with the payload written `payload`, as JSON writes it: an object with one member.
 def payloadJson: string, Json -> Json = { name, payload ->
-  #object([name => payload])
+  #object([(name, payload)])
 }
 
 --| `value`, of the type `t`, as a `Json` value, or the path to a part that can't be written, and
@@ -203,7 +231,7 @@ def toJson: a, Type(a) -> #some(Json) | #failed(list(PathStep), string) = { valu
           )
           []
         )
-          | #some(members) -> #some(#object(map.fromList(members)))
+          | #some(members) -> #some(#object(members))
           | #failed(path, message) -> #failed(path, message)
     | #union(u) ->
       def names = list.map(u.cases, { c -> c.name })
@@ -213,17 +241,21 @@ def toJson: a, Type(a) -> #some(Json) | #failed(list(PathStep), string) = { valu
         { c ->
           match c.get(value)
             | #some(payload) -> #some(
-              if isJson(u.name, u.module) or isOption(names)
-                then (if c.name == "null" or c.name == "none"
-                  then #some(#null)
-                  else toJson(payload, c.type))
-                else match c.type
-                  | #unit -> #some(tagJson(c.name))
-                  | else -> stepped(
-                    #field(c.name)
-                    toJson(payload, c.type)
-                    { j -> payloadJson(c.name, j) }
-                  )
+              if isJson(u.name, u.module) and c.name == "object"
+                then (match toJson(payload, c.type)
+                  | #some(pairs) -> #some(pairsAsObject(pairs))
+                  | failure -> failure)
+                else if isJson(u.name, u.module) or isOption(names)
+                  then (if c.name == "null" or c.name == "none"
+                    then #some(#null)
+                    else toJson(payload, c.type))
+                  else match c.type
+                    | #unit -> #some(tagJson(c.name))
+                    | else -> stepped(
+                      #field(c.name)
+                      toJson(payload, c.type)
+                      { j -> payloadJson(c.name, j) }
+                    )
             )
             | #none -> #skip
         }
@@ -267,7 +299,7 @@ export def encode: [Typed(a)] a -> #some(string) | EncodeError = { x ->
 
 --| `value` as a [`Json`] value, with no encoder written for it, written by walking its type as
   [`encode`] writes it: `json.encodeValue((name = "Ada", tags = ["x"]))` is
-  `#some(#object(["name" => #string("Ada"), "tags" => #array([#string("x")])]))`. For a value to
+  `#some(#object([("name", #string("Ada")), ("tags", #array([#string("x")]))]))`. For a value to
   put in a larger `Json` value, or to print with [`printPretty`]. A function and a nominal type
   can't be written: they are an [`EncodeError`], with the path to them.
 export def encodeValue: [Typed(a)] a -> #some(Json) | EncodeError = { x ->
@@ -337,7 +369,9 @@ def mapOf
   = { v, key, item ->
     match key
       | #string -> (match v
-        | #object(members) -> valuesOf(map.map(members, { member -> fromJson(member, item) }))
+        | #object(members) -> valuesOf(
+          map.map(map.fromList(members), { member -> fromJson(member, item) })
+        )
         | other -> mismatch("an object", other))
       | else -> #failed([], "A map can be read from JSON only with string keys")
   }
@@ -410,7 +444,7 @@ def fromJson: Json, Type(a) -> #some(a) | #failed(list(PathStep), string) = { v,
           | #object(members) -> r.build { f ->
             def key = keyOf(f.name, f.attributes)
 
-            match map.get(members, key)
+            match member(members, key)
               | #some(member) -> within(#field(key), fromJson(member, f.type))
               | #notFound ->
                 if isOptionType(f.type)
@@ -423,14 +457,14 @@ def fromJson: Json, Type(a) -> #some(a) | #failed(list(PathStep), string) = { v,
 
       def wanted =
         if isJson(u.name, u.module)
-          then #tag(tagOf(v), v, #inline)
+          then #tag(tagOf(v), objectAsPairs(v), #inline)
           else if isOption(names)
             then (match v
               | #null -> #tag("none", #null, #inline)
               | other -> #tag("some", other, #inline))
             else match v
               | #string(name) -> #tag(name, #null, #bare)
-              | #object(members) -> (match map.toList(members)
+              | #object(members) -> (match members
                 | [(name, payload)] -> #tag(name, payload, #member)
                 | _ -> #wrong)
               | _ -> #wrong

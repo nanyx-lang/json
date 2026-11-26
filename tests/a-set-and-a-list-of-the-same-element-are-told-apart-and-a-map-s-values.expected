@@ -1,6 +1,6 @@
 {"ids":[1,1,2],"tags":[3]}
 tags: A set can't be read from JSON: read a list, and make a set of it
 [1, 2]
-{"a":[{"circle":1}],"b":[],"c":["dot"]}
+{"b":[],"a":[{"circle":1}],"c":["dot"]}
 true
 b[0]: Expected one of the tags 'circle' or 'dot', found 'square'

@@ -1,5 +1,5 @@
 -- a tag union is decoded by the decoder a discriminator field chooses, and encoded back
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode
@@ -55,9 +55,9 @@ def shape: json.Decoder(Shape) = json.record {
 }
 
 def shapeEncoder: json.Encoder(Shape) = {
-  | #circle(r) -> #object(["kind" => #string("circle"), "radius" => #number(r)])
+  | #circle(r) -> #object([("kind", #string("circle")), ("radius", #number(r))])
   | #rect(w, h) -> #object(
-    ["kind" => #string("rect"), "width" => #number(w), "height" => #number(h)]
+    [("kind", #string("rect")), ("width", #number(w)), ("height", #number(h))]
   )
 }
 

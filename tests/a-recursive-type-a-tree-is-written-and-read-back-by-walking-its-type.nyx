@@ -1,5 +1,5 @@
 -- a recursive type, a tree, is written and read back by walking its type
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

@@ -1,5 +1,5 @@
 -- json.parse and json.print handle a document of over 100,000 values
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

@@ -129,7 +129,7 @@ def decodeMembers
 export def dict: Decoder(a) -> Decoder(map(string, a)) = { decoder ->
   decoderOf(
     {
-      | #object(members) -> decodeMembers(decoder, map.toList(members), [])
+      | #object(members) -> decodeMembers(decoder, members, [])
       | other -> mismatch("an object", other)
     }
   )
@@ -158,7 +158,7 @@ export def field: string, Decoder(a) -> Decoder(a) = { name, decoder ->
 
   decoderOf(
     {
-      | #object(members) -> (match map.get(members, name)
+      | #object(members) -> (match member(members, name)
         | #some(member) -> (match runOn(decoder, member)
           | #some(x) -> #some(x)
           | #failed(path, message) -> #failed([#field(name), ...path], message))

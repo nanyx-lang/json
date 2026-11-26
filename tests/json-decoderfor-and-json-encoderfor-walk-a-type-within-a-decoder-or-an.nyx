@@ -1,5 +1,5 @@
 -- json.decoderFor and json.encoderFor walk a type within a decoder or an encoder of your own
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

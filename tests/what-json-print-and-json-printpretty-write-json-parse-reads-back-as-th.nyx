@@ -1,5 +1,5 @@
 -- What json.print and json.printPretty write, json.parse reads back as the same value
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 
@@ -11,13 +11,14 @@ def show = { text ->
 
 def value: json.Json = #object(
   [
-    "name" => #string("Ada \"the first\" \\ Lovelace\n\u{e9}\u{1F600}\u{1}")
-    "numbers" => #array(
-      [#number(0.0), #number(-2.5), #number(1.5e-7), #number(1.0e21), #number(123456.789)]
+    ("name", #string("Ada \"the first\" \\ Lovelace\n\u{e9}\u{1F600}\u{1}"))
+    (
+      "numbers"
+      #array([#number(0.0), #number(-2.5), #number(1.5e-7), #number(1.0e21), #number(123456.789)])
     )
-    "flags" => #array([#bool(true), #bool(false), #null])
-    "empty" => #object([])
-    "nested" => #object(["a" => #array([#array([]), #object(["b" => #string("")])])])
+    ("flags", #array([#bool(true), #bool(false), #null]))
+    ("empty", #object([]))
+    ("nested", #object([("a", #array([#array([]), #object([("b", #string(""))])]))]))
   ]
 )
 

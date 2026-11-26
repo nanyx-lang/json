@@ -1,5 +1,5 @@
 -- lists and nested records are decoded, and an error names the path to the value that didn't fit
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

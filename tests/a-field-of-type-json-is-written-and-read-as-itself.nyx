@@ -1,5 +1,5 @@
 -- a field of type Json is written and read as itself
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

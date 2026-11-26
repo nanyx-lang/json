@@ -1,5 +1,5 @@
 -- An object keeps its keys in the order they were written, and a key written twice holds its last value
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 
@@ -11,4 +11,6 @@ def show = { text ->
 
 show('{"zebra": 1, "apple": 2, "mango": 3}')
 show('{"b": 1, "a": 2, "b": 3}')
+-- An object's order is part of it, so the same members in another order are another object.
 println(json.parse('{"a": 1, "b": 2}') == json.parse('{"b": 2, "a": 1}'))
+println(json.parse('{"a": 1, "b": 2}') == json.parse('{ "a" : 1 , "b" : 2 }'))

@@ -54,7 +54,7 @@ export def list: Encoder(a) -> Encoder(list(a)) = { encoder ->
 
 --| Writes a map as an object, each value by `encoder`, in the map's order.
 export def dict: Encoder(a) -> Encoder(map(string, a)) = { encoder ->
-  { m -> #object(map.map(m, encoder)) }
+  { m -> #object(map.toList(map.map(m, encoder))) }
 }
 
 --| Writes `#none` as `null`, and `#some(x)` as `encoder` writes `x`.
@@ -103,5 +103,5 @@ def written: list(Member(a)), a, list((string, Json)) -> list((string, Json)) = 
 
 --| Writes a value as an object of `members`, in their order.
 export def object: list(Member(a)) -> Encoder(a) = { members ->
-  { x -> #object(map.fromList(list.reverse(written(members, x, [])))) }
+  { x -> #object(list.reverse(written(members, x, []))) }
 }

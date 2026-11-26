@@ -1,5 +1,5 @@
 -- json.parse reads every kind of value, and json.print writes it back
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

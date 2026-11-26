@@ -1,5 +1,5 @@
 -- a set and a list of the same element are told apart, and a map's values are written and read by walking them
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 
