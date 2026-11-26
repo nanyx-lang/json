@@ -1,5 +1,5 @@
 -- a list of 100,000 records is decoded and encoded in constant stack
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

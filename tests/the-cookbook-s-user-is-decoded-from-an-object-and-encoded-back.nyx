@@ -1,5 +1,5 @@
 -- the cookbook's User is decoded from an object, and encoded back
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

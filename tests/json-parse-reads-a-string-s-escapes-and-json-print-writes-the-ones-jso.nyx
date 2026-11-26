@@ -1,5 +1,5 @@
 -- json.parse reads a string's escapes, and json.print writes the ones JSON needs
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

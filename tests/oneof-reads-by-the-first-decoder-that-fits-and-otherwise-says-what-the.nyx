@@ -1,5 +1,5 @@
 -- oneOf reads by the first decoder that fits, and otherwise says what the one that got furthest found
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

@@ -1,5 +1,5 @@
 -- an error's path is a list of steps, written by pathText
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

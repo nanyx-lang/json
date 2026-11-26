@@ -1,5 +1,5 @@
 -- json.printPretty writes each element and member on a line of its own
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

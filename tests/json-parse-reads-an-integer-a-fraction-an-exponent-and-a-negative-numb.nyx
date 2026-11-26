@@ -1,5 +1,5 @@
 -- json.parse reads an integer, a fraction, an exponent and a negative number
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

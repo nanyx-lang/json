@@ -1,5 +1,5 @@
 -- an optional field reads a missing member and null as none, and anything else by its decoder
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

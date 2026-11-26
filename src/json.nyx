@@ -8,14 +8,15 @@
   the type, with no encoder or decoder written for it: `json.decode(type User, text)`. To
   write or read a type another way, build an [`Encoder`] or a [`Decoder`] from smaller ones, and
   run it with [`encodeWith`] or [`decodeWith`]. A program names
-  `nanyx.json` in its manifest's `dependencies`, or a script in a `::dependency` line, and imports
+  `nanyx.json` in its manifest's `dependencies`, or a script in an `::install` line, and imports
   it as `import nanyx.json/json as json`, to call `json.parse(text)` as the docs do.
 
-  An object is a `map(string, Json)`, so `print` and `encode` write its keys, and a record's
-  fields, in the order the map gives them. With a compiler whose maps keep their keys in the order
-  they were added, that is the order the text or the record writes them; once maps give their keys
-  in the order of their hashes, it is unspecified. A key written twice holds the value written
-  last.
+  An object is a list of its members, each a key and a value, in the order they are written, so
+  [`parse`] and [`print`] keep the order of an object's keys, and [`encode`] writes a record's
+  fields in the order its type declares them. A key written twice in the text is read once, where
+  it is first written, with the value written last, as `{"a": 1, "b": 2, "a": 3}` is
+  `{"a": 3, "b": 2}`. Two objects are `==` when they have the same members in the same order. A
+  `map` of values is written in the map's order, which is its keys' hashes'.
 
   Text is UTF-8, as strings are, and a string's escapes are read as JSON writes them: `\"`, `\\`,
   `\/`, `\b`, `\f`, `\n`, `\r`, `\t` and `\uXXXX`, with a character past U+FFFF written as two
@@ -32,14 +33,14 @@ import (
 )
 
 --| A JSON value: `null`, a boolean, a number, a string, an array of values, or an object, whose
-  members are values each named by a string.
+  members are values each named by a string, in the order they are written.
 export type Json =
   | #null
   | #bool(bool)
   | #number(float)
   | #string(string)
   | #array(list(Json))
-  | #object(map(string, Json))
+  | #object(list((string, Json)))
 
 --| Why [`parse`] read no value: `#invalidJson`, with where the text stops being JSON and what it
   found there. `position` is the byte the problem is at, counting from 0, and `line` and `column`
@@ -344,7 +345,7 @@ def afterElement: StringSlice, int, list(Json) -> Parsed = { text, i, elements -
 --| The object whose `{` is before byte `from`.
 def parseObject: StringSlice, int -> Parsed = { text, from ->
   def i = skipWhitespace(text, from)
-  if byteAt(text, i) == 125 then #parsed(#object(map.empty), i + 1) else parseMembers(text, i, [])
+  if byteAt(text, i) == 125 then #parsed(#object([]), i + 1) else parseMembers(text, i, [])
 }
 
 --| The members of an object from byte `from` on, after `members`, which hold those before it, last
@@ -395,8 +396,55 @@ def afterMember: StringSlice, int, list((string, Json)) -> Parsed = { text, i, m
   if b == 44
     then parseMembers(text, i + 1, members)
     else if b == 125
-      then #parsed(#object(map.fromList(list.reverse(members))), i + 1)
+      then #parsed(#object(lastWins(list.reverse(members))), i + 1)
       else #failed(i, "Expected ',' or '\}' after a member of an object, found {found(text, i)}")
+}
+
+--| `members`, as written, with a key written twice there once, where it is first written, holding
+  the value written last.
+def lastWins: list((string, Json)) -> list((string, Json)) = { members ->
+  def last = map.fromList(members)
+
+  if map.length(last) == list.length(members)
+    then members
+    else keptOnce(members, last, set.empty, [])
+}
+
+--| The members of `members` whose keys aren't in `seen`, each with its value in `last`, after `acc`,
+  the ones before, last first.
+def keptOnce
+  : list((string, Json)),
+    map(string, Json),
+    set(string),
+    list((string, Json))
+    -> list((string, Json))
+  = { members, last, seen, acc ->
+    match members
+      | [] -> list.reverse(acc)
+      | [(key, value), ...rest] ->
+        if set.contains(seen, key)
+          then keptOnce(rest, last, seen, acc)
+          else keptOnce(
+            rest
+            last
+            set.insert(seen, key)
+            [(key, memberOr(last, key, value)), ...acc]
+          )
+  }
+
+--| The value of `key` in `last`, or `value` if it has none.
+def memberOr: map(string, Json), string, Json -> Json = { last, key, value ->
+  match map.get(last, key)
+    | #some(found) -> found
+    | #notFound -> value
+}
+
+--| The value of the member `key` of an object's `members`, the first of that name, or `#notFound`:
+  `json.member(person, "name")` for the object `#object(person)`.
+export def member: list((string, Json)), string -> #some(Json) | #notFound = { members, key ->
+  match list.find(members, { member -> member.0 == key })
+    | #some(_, value) -> #some(value)
+    | #notFound -> #notFound
 }
 
 --| The JSON value `text` writes, or an `#invalidJson` that says where it stops being JSON and why.
@@ -508,7 +556,7 @@ def written: Json, list(string) -> list(string) = { value, acc ->
     | #number(x) -> [numberText(x), ...acc]
     | #string(s) -> quoted(s, acc)
     | #array(elements) -> ["]", ...writtenElements(elements, ["[", ...acc])]
-    | #object(members) -> ["\}", ...writtenMembers(map.toList(members), ["\{", ...acc])]
+    | #object(members) -> ["\}", ...writtenMembers(members, ["\{", ...acc])]
 }
 
 --| `elements` written compactly, with a `,` between each two, in front of `acc`.
@@ -532,7 +580,7 @@ def writtenMembers: list((string, Json)), list(string) -> list(string) = {
 --| `value` as JSON text, written compactly, with no whitespace: the array of `#number(1.0)` and
   `#string("two")` is `[1,"two"]`. A number with no fraction is written without one, as `1`, and
   NaN and infinity, which JSON has no way to write, as `null`. An object's members are written in
-  its map's order. What `print` writes, [`parse`] reads back as the same value.
+  their order. What `print` writes, [`parse`] reads back as the same value.
 export def print: Json -> string = { value ->
   string.concat(list.reverse(written(value, [])))
 }
@@ -548,12 +596,12 @@ def pretty: Json, int, string, list(string) -> list(string) = { value, indent, n
       newline
       ...prettyElements(elements, indent, deeper(newline, indent), ["[", ...acc])
     ]
-    | #object(members) -> (if map.isEmpty(members)
+    | #object(members) -> (if list.isEmpty(members)
       then ["\{\}", ...acc]
       else [
         "\}"
         newline
-        ...prettyMembers(map.toList(members), indent, deeper(newline, indent), ["\{", ...acc])
+        ...prettyMembers(members, indent, deeper(newline, indent), ["\{", ...acc])
       ])
     | _ -> written(value, acc)
 }

@@ -1,5 +1,5 @@
 -- each kind of value is decoded by its own decoder, and anything else is an error that says what was found
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import (
   nanyx.json/encode as encode

@@ -1,5 +1,5 @@
 -- lists, arrays, sets, maps, sized numbers and unit are written as JSON writes them
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

@@ -1,8 +1,9 @@
 (
   package = (
     name = "nanyx.json"
-    version = "0.4.2"
-    sources = ["src/**/*.nyx"]
+    version = "0.5.0"
     repository = "nanyx-lang/json"
+    nanyx = "0.44"
+    sources = ["src/**/*.nyx"]
   )
 )

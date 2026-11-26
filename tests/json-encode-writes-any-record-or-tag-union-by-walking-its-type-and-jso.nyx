@@ -1,5 +1,5 @@
 -- json.encode writes any record or tag union by walking its type, and json.decode reads it back
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

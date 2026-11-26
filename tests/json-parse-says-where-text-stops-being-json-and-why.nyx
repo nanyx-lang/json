@@ -1,5 +1,5 @@
 -- json.parse says where text stops being JSON, and why
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 

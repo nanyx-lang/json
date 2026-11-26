@@ -3,7 +3,7 @@
 # Give the compiler to use as NANYX (default: `nanyx` on the PATH).
 #
 # A script in the package's own directory would be one of its files, so the tests run from a temporary directory
-# that holds a copy of the package, `nanyx.json`, beside them: each names it with `::dependency nanyx.json ./nanyx.json`.
+# that holds a copy of the package, `nanyx.json`, beside them: each names it with `::install nanyx.json ./nanyx.json`.
 set -u
 nanyx="${NANYX:-nanyx}"
 tests="$(cd "$(dirname "$0")" && pwd)"

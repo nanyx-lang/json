@@ -12,7 +12,7 @@ In a package:
 nanyx install nanyx.json
 ```
 
-That adds `(package = "nanyx.json", version = "0.3")` to the manifest's `dependencies`, locks the version in
+That adds `(package = "nanyx.json", version = "0.5")` to the manifest's `dependencies`, locks the version in
 `nanyx.lock` and downloads it.
 
 ## Use
@@ -49,6 +49,12 @@ when it is a field. A field's key is its name, or the name a `@json(name = "user
 function, or a nominal type whose structure the package can't see, is a `#cannotEncode` failure (an `EncodeError`)
 with the path to it.
 
+An object keeps its members in order: `json.parse` reads them in the order the text writes them and `json.print`
+writes them back so, and `json.encode` writes a record's fields in the order its type declares them. A `Json` object
+is `#object(list((string, Json)))`, a list of its members, and `json.member(members, "name")` finds one. A key written
+twice in the text is read once, where it is first written, with the value written last. A `map` is written in the
+map's own order.
+
 A recursive type is walked as any other: a tree is a tag inside a tag, and a field of type `json.Json` is written
 and read as itself. `json.encodeValue` writes a value as a `Json` value instead of text, to put in a larger one or to
 print with `json.printPretty`.
@@ -80,6 +86,7 @@ tests/run.sh                 # with nanyx on the PATH
 NANYX=path/to/nanyx tests/run.sh
 ```
 
-CI builds and tests the package with the compiler release its workflow names, 0.38.0. To release, set the manifest's
-`version` (or run `nanyx bump`) and run `nanyx publish`, which creates the GitHub release with the `.nyxpkg` and
-registers the version with the [package index](https://github.com/nanyx-lang/packages).
+CI builds and tests the package with the compiler release its workflow names, 0.44.1. To release, set the manifest's
+`version` (or run `nanyx bump`) in a pull request. When it merges, CI's `publish` job runs `nanyx publish`, which
+creates the GitHub release `v<version>` with the `.nyxpkg`, and the [package index](https://github.com/nanyx-lang/packages)
+records it. A merge whose version is already released publishes nothing.

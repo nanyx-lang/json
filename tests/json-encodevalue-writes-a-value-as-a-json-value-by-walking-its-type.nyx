@@ -1,5 +1,5 @@
 -- json.encodeValue writes a value as a Json value by walking its type
-::dependency nanyx.json ./nanyx.json
+::install nanyx.json ./nanyx.json
 
 import nanyx.json/json as json
 
