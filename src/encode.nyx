@@ -1,6 +1,6 @@
 --| Encoders: a value of a type of your own written as JSON, the other way from `json`'s decoders.
 
-  An [`Encoder(a)`](json#encoder) is a function from an `a` to a `Json` value, so any such
+  An [`Encoder(a)`](json-typed#encoder) is a function from an `a` to a `Json` value, so any such
   function is one. The encoders here write one kind of value each ([`string`], [`int`],
   [`float`], [`bool`]), and the rest build larger ones from smaller: [`list`], [`dict`],
   [`optional`], and [`object`], which writes a record a member at a time, each a [`field`] or an
